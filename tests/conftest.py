@@ -1,0 +1,84 @@
+"""
+Shared pytest fixtures for XQVM test suite.
+"""
+
+import pytest
+
+from xqvm.core.state import MachineState
+from xqvm.core.xqmx import XQMX
+from xqvm.core.executor import Executor, Program, Instruction
+from xqvm.core.opcodes import Opcode
+
+
+@pytest.fixture
+def empty_state() -> MachineState:
+    """Create a fresh MachineState with no data."""
+    return MachineState()
+
+
+@pytest.fixture
+def binary_model() -> XQMX:
+    """Create an empty binary model XQMX."""
+    return XQMX.binary_model(size=10)
+
+
+@pytest.fixture
+def binary_sample() -> XQMX:
+    """Create an empty binary sample XQMX."""
+    return XQMX.binary_sample(size=10)
+
+
+@pytest.fixture
+def grid_model() -> XQMX:
+    """Create a binary model XQMX with grid dimensions."""
+    return XQMX.binary_model(size=25, rows=5, cols=5)
+
+
+@pytest.fixture
+def executor() -> Executor:
+    """Create a fresh Executor instance."""
+    return Executor()
+
+
+@pytest.fixture
+def simple_program() -> Program:
+    """Create a simple program that pushes, adds, and stores."""
+    return Program([
+        Instruction(Opcode.PUSH, (10,)),
+        Instruction(Opcode.PUSH, (5,)),
+        Instruction(Opcode.ADD),
+        Instruction(Opcode.STOW, (0,)),
+        Instruction(Opcode.HALT),
+    ])
+
+
+def make_program(instructions: list[tuple]) -> Program:
+    """Helper to build a Program from instruction tuples.
+
+    Each tuple should be (Opcode, operands) or just (Opcode,) for no operands.
+    Example:
+        make_program([
+            (Opcode.PUSH, (10,)),
+            (Opcode.PUSH, (5,)),
+            (Opcode.ADD,),
+            (Opcode.HALT,),
+        ])
+    """
+    instrs = []
+    for item in instructions:
+        if len(item) == 1:
+            instrs.append(Instruction(item[0]))
+        else:
+            instrs.append(Instruction(item[0], item[1]))
+    return Program(instrs)
+
+
+def run_program(instructions: list[tuple], input_data: dict | None = None) -> Executor:
+    """Build and execute a program from instruction tuples.
+
+    Returns the executor after execution for state inspection.
+    """
+    prog = make_program(instructions)
+    ex = Executor()
+    ex.execute(prog, input_data)
+    return ex

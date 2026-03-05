@@ -63,13 +63,6 @@ class JumpControl:
         """ Get the current loop frame without removing it. """
         return self.loop_stack[-1] if self.loop_stack else None
 
-    def current_value(self) -> Value:
-        """ Get current loop value. Raises LoopError if no active loop. """
-        if not self.loop_stack:
-            raise LoopError("No active loop")
-        frame = self.loop_stack[-1]
-        return frame.values[frame.index]
-
     def advance_loop(self) -> bool:
         """ Advance loop index. Returns True if loop should continue. """
         if not self.loop_stack:
@@ -83,6 +76,13 @@ class JumpControl:
             return False
 
         return True
+
+    def current_loop_value(self) -> Value:
+        """ Get current loop value. Raises LoopError if no active loop. """
+        if not self.loop_stack:
+            raise LoopError("No active loop")
+        frame = self.loop_stack[-1]
+        return frame.values[frame.index]
 
     @property
     def in_loop(self) -> bool:

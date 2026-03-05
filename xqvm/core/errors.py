@@ -1,4 +1,4 @@
-""" 
+"""
 XQVM Exception Hierarchy
 """
 
@@ -30,11 +30,11 @@ class TypeMismatch(XQVMError):
         self.expected = expected
         self.got = got
         self.context = context
-        
+
         msg = f"Type mismatch: expected {expected}, got {got}"
         if context:
             msg += f" in {context}"
-        
+
         super().__init__(msg)
 
 class RegisterNotFound(XQVMError):
@@ -77,7 +77,7 @@ class XQMXModeError(XQVMError):
         self.operation = operation
         self.mode = mode
         self.required_mode = required_mode
-        
+
         super().__init__(
             f"XQMX mode error: {operation} requires {required_mode} mode, but matrix is in {mode} mode"
         )

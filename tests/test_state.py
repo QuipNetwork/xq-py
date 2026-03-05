@@ -214,7 +214,7 @@ class TestLoopRangeOperations:
         jc.push_loop_range(target=0, start=0, count=5)
 
         assert jc.in_loop is True
-        assert jc.current_value() == 0
+        assert jc.current_loop_value() == 0
 
     def test_range_loop_values(self):
         """Range loop generates correct sequence."""
@@ -223,7 +223,7 @@ class TestLoopRangeOperations:
 
         values = []
         while True:
-            values.append(jc.current_value())
+            values.append(jc.current_loop_value())
             if not jc.advance_loop():
                 break
 
@@ -236,7 +236,7 @@ class TestLoopRangeOperations:
 
         values = []
         while True:
-            values.append(jc.current_value())
+            values.append(jc.current_loop_value())
             if not jc.advance_loop():
                 break
 
@@ -272,7 +272,7 @@ class TestLoopIterOperations:
         jc.push_loop_iter(target=0, vec=v, start_idx=0, end_idx=3)
 
         assert jc.in_loop is True
-        assert jc.current_value() == 10
+        assert jc.current_loop_value() == 10
 
     def test_iter_loop_values(self):
         """Iter loop iterates over vec slice."""
@@ -282,7 +282,7 @@ class TestLoopIterOperations:
 
         values = []
         while True:
-            values.append(jc.current_value())
+            values.append(jc.current_loop_value())
             if not jc.advance_loop():
                 break
 
@@ -296,7 +296,7 @@ class TestLoopIterOperations:
 
         values = []
         while True:
-            values.append(jc.current_value())
+            values.append(jc.current_loop_value())
             if not jc.advance_loop():
                 break
 
@@ -313,16 +313,16 @@ class TestNestedLoops:
         jc.push_loop_range(target=1, start=0, count=3)  # Inner
 
         # Inner loop values
-        assert jc.current_value() == 0
+        assert jc.current_loop_value() == 0
         jc.advance_loop()
-        assert jc.current_value() == 1
+        assert jc.current_loop_value() == 1
         jc.advance_loop()
-        assert jc.current_value() == 2
+        assert jc.current_loop_value() == 2
         jc.advance_loop()  # Inner done, pops
 
         # Back to outer loop
         assert jc.loop_depth == 1
-        assert jc.current_value() == 0
+        assert jc.current_loop_value() == 0
 
     def test_current_loop_returns_frame(self):
         """current_loop returns current frame without removing."""
@@ -338,11 +338,11 @@ class TestNestedLoops:
 class TestLoopErrors:
     """Tests for loop error conditions."""
 
-    def test_current_value_outside_loop(self):
-        """current_value outside loop raises LoopError."""
+    def test_current_loop_value_outside_loop(self):
+        """current_loop_value outside loop raises LoopError."""
         jc = JumpControl()
         with pytest.raises(LoopError):
-            jc.current_value()
+            jc.current_loop_value()
 
     def test_advance_loop_outside_loop(self):
         """advance_loop outside loop raises LoopError."""

@@ -72,19 +72,19 @@ class TracerProtocol(Protocol):
     """
 
     def on_step_begin(self, executor: Executor, instr: Instruction) -> None:
-        """Called before each instruction executes."""
+        """ Called before each instruction executes. """
         ...
 
     def on_step_end(self, executor: Executor, instr: Instruction) -> None:
-        """Called after each instruction executes."""
+        """ Called after each instruction executes. """
         ...
 
     def on_error(self, executor: Executor, instr: Instruction, error: Exception) -> None:
-        """Called when an error occurs during execution."""
+        """ Called when an error occurs during execution. """
         ...
 
     def on_halt(self, executor: Executor) -> None:
-        """Called when execution halts normally."""
+        """ Called when execution halts normally. """
         ...
 
 class Executor:
@@ -112,88 +112,88 @@ class Executor:
         self._dispatch = self._build_dispatch_table()
 
     def _build_dispatch_table(self) -> dict[Opcode, Callable[[Instruction], None]]:
-        """Build the opcode -> handler dispatch table."""
+        """ Build the opcode -> handler dispatch table. """
         return {
             # Control flow
-            Opcode.NOP: self._handle_nop,
-            Opcode.HALT: self._handle_halt,
-            Opcode.TARGET: self._handle_target,
-            Opcode.JUMP: self._handle_jump,
-            Opcode.JUMPI: self._handle_jumpi,
-            Opcode.RANGE: self._handle_range,
-            Opcode.ITER: self._handle_iter,
-            Opcode.NEXT: self._handle_next,
-            Opcode.LVAL: self._handle_lval,
+            Opcode.NOP: self._runner_NOP,
+            Opcode.HALT: self._runner_HALT,
+            Opcode.TARGET: self._runner_TARGET,
+            Opcode.JUMP: self._runner_JUMP,
+            Opcode.JUMPI: self._runner_JUMPI,
+            Opcode.RANGE: self._runner_RANGE,
+            Opcode.ITER: self._runner_ITER,
+            Opcode.NEXT: self._runner_NEXT,
+            Opcode.LVAL: self._runner_LVAL,
             # Stack & Register I/O
-            Opcode.PUSH: self._handle_push,
-            Opcode.POP: self._handle_pop,
-            Opcode.DUPL: self._handle_dupl,
-            Opcode.SWAP: self._handle_swap,
-            Opcode.LOAD: self._handle_load,
-            Opcode.STOW: self._handle_stow,
-            Opcode.INPUT: self._handle_input,
-            Opcode.OUTPUT: self._handle_output,
+            Opcode.PUSH: self._runner_PUSH,
+            Opcode.POP: self._runner_POP,
+            Opcode.DUPL: self._runner_DUPL,
+            Opcode.SWAP: self._runner_SWAP,
+            Opcode.LOAD: self._runner_LOAD,
+            Opcode.STOW: self._runner_STOW,
+            Opcode.INPUT: self._runner_INPUT,
+            Opcode.OUTPUT: self._runner_OUTPUT,
             # Arithmetic
-            Opcode.ADD: self._handle_add,
-            Opcode.SUB: self._handle_sub,
-            Opcode.MUL: self._handle_mul,
-            Opcode.DIV: self._handle_div,
-            Opcode.MOD: self._handle_mod,
-            Opcode.NEG: self._handle_neg,
+            Opcode.ADD: self._runner_ADD,
+            Opcode.SUB: self._runner_SUB,
+            Opcode.MUL: self._runner_MUL,
+            Opcode.DIV: self._runner_DIV,
+            Opcode.MOD: self._runner_MOD,
+            Opcode.NEG: self._runner_NEG,
             # Comparison
-            Opcode.EQ: self._handle_eq,
-            Opcode.LT: self._handle_lt,
-            Opcode.GT: self._handle_gt,
-            Opcode.LTE: self._handle_lte,
-            Opcode.GTE: self._handle_gte,
+            Opcode.EQ: self._runner_EQ,
+            Opcode.LT: self._runner_LT,
+            Opcode.GT: self._runner_GT,
+            Opcode.LTE: self._runner_LTE,
+            Opcode.GTE: self._runner_GTE,
             # Boolean
-            Opcode.NOT: self._handle_not,
-            Opcode.AND: self._handle_and,
-            Opcode.OR: self._handle_or,
-            Opcode.XOR: self._handle_xor,
+            Opcode.NOT: self._runner_NOT,
+            Opcode.AND: self._runner_AND,
+            Opcode.OR: self._runner_OR,
+            Opcode.XOR: self._runner_XOR,
             # Bitwise
-            Opcode.BAND: self._handle_band,
-            Opcode.BOR: self._handle_bor,
-            Opcode.BXOR: self._handle_bxor,
-            Opcode.BNOT: self._handle_bnot,
-            Opcode.SHL: self._handle_shl,
-            Opcode.SHR: self._handle_shr,
+            Opcode.BAND: self._runner_BAND,
+            Opcode.BOR: self._runner_BOR,
+            Opcode.BXOR: self._runner_BXOR,
+            Opcode.BNOT: self._runner_BNOT,
+            Opcode.SHL: self._runner_SHL,
+            Opcode.SHR: self._runner_SHR,
             # Allocators
-            Opcode.VEC: self._handle_vec,
-            Opcode.VECI: self._handle_veci,
-            Opcode.VECX: self._handle_vecx,
-            Opcode.BQMX: self._handle_bqmx,
-            Opcode.SQMX: self._handle_sqmx,
-            Opcode.XQMX: self._handle_xqmx,
-            Opcode.BSMX: self._handle_bsmx,
-            Opcode.SSMX: self._handle_ssmx,
-            Opcode.XSMX: self._handle_xsmx,
+            Opcode.VEC: self._runner_VEC,
+            Opcode.VECI: self._runner_VECI,
+            Opcode.VECX: self._runner_VECX,
+            Opcode.BQMX: self._runner_BQMX,
+            Opcode.SQMX: self._runner_SQMX,
+            Opcode.XQMX: self._runner_XQMX,
+            Opcode.BSMX: self._runner_BSMX,
+            Opcode.SSMX: self._runner_SSMX,
+            Opcode.XSMX: self._runner_XSMX,
             # Vec Access
-            Opcode.VECPUSH: self._handle_vecpush,
-            Opcode.VECGET: self._handle_vecget,
-            Opcode.VECSET: self._handle_vecset,
-            Opcode.VECLEN: self._handle_veclen,
+            Opcode.VECPUSH: self._runner_VECPUSH,
+            Opcode.VECGET: self._runner_VECGET,
+            Opcode.VECSET: self._runner_VECSET,
+            Opcode.VECLEN: self._runner_VECLEN,
             # XQMX Access
-            Opcode.GETLINE: self._handle_getline,
-            Opcode.SETLINE: self._handle_setline,
-            Opcode.ADDLINE: self._handle_addline,
-            Opcode.GETQUAD: self._handle_getquad,
-            Opcode.SETQUAD: self._handle_setquad,
-            Opcode.ADDQUAD: self._handle_addquad,
+            Opcode.GETLINE: self._runner_GETLINE,
+            Opcode.SETLINE: self._runner_SETLINE,
+            Opcode.ADDLINE: self._runner_ADDLINE,
+            Opcode.GETQUAD: self._runner_GETQUAD,
+            Opcode.SETQUAD: self._runner_SETQUAD,
+            Opcode.ADDQUAD: self._runner_ADDQUAD,
             # Vector Math
-            Opcode.IDXGRID: self._handle_idxgrid,
-            Opcode.IDXTRIU: self._handle_idxtriu,
+            Opcode.IDXGRID: self._runner_IDXGRID,
+            Opcode.IDXTRIU: self._runner_IDXTRIU,
             # XQMX Grid
-            Opcode.RESIZE: self._handle_resize,
-            Opcode.ROWFIND: self._handle_rowfind,
-            Opcode.COLFIND: self._handle_colfind,
-            Opcode.ROWSUM: self._handle_rowsum,
-            Opcode.COLSUM: self._handle_colsum,
+            Opcode.RESIZE: self._runner_RESIZE,
+            Opcode.ROWFIND: self._runner_ROWFIND,
+            Opcode.COLFIND: self._runner_COLFIND,
+            Opcode.ROWSUM: self._runner_ROWSUM,
+            Opcode.COLSUM: self._runner_COLSUM,
             # XQMX High-level
-            Opcode.ONEHOT: self._handle_onehot,
-            Opcode.EXCLUDE: self._handle_exclude,
-            Opcode.IMPLIES: self._handle_implies,
-            Opcode.ENERGY: self._handle_energy,
+            Opcode.ONEHOT: self._runner_ONEHOT,
+            Opcode.EXCLUDE: self._runner_EXCLUDE,
+            Opcode.IMPLIES: self._runner_IMPLIES,
+            Opcode.ENERGY: self._runner_ENERGY,
         }
 
     def execute(
@@ -276,46 +276,46 @@ class Executor:
     # Helper Methods
     # =========================================================================
 
+    def _get_register_as_int(self, slot: int) -> int:
+        """ Get a register value, ensuring it's an int. """
+        value = self.state.get_register(slot)
+        if not isinstance(value, int):
+            raise TypeMismatch("int", type(value).__name__, f"register r{slot}")
+        return value
+
     def _get_register_as_vec(self, slot: int) -> Vec:
-        """Get a register value, ensuring it's a Vec."""
+        """ Get a register value, ensuring it's a vec. """
         value = self.state.get_register(slot)
         if not isinstance(value, Vec):
             raise TypeMismatch("Vec", type(value).__name__, f"register r{slot}")
         return value
 
     def _get_register_as_xqmx(self, slot: int) -> XQMX:
-        """Get a register value, ensuring it's an XQMX."""
+        """ Get a register value, ensuring it's an xqmx """
         value = self.state.get_register(slot)
         if not isinstance(value, XQMX):
             raise TypeMismatch("XQMX", type(value).__name__, f"register r{slot}")
         return value
 
-    def _get_register_as_int(self, slot: int) -> int:
-        """Get a register value, ensuring it's an int."""
-        value = self.state.get_register(slot)
-        if not isinstance(value, int):
-            raise TypeMismatch("int", type(value).__name__, f"register r{slot}")
-        return value
-
     # =========================================================================
-    # Control Flow Handlers
+    # Instruction Set Runners
     # =========================================================================
 
-    def _handle_nop(self, instr: Instruction) -> None:
-        """NOP: No operation."""
+    def _runner_NOP(self, instr: Instruction) -> None:
+        """ NOP: No operation. """
         pass
 
-    def _handle_halt(self, instr: Instruction) -> None:
-        """HALT: Stop execution."""
+    def _runner_HALT(self, instr: Instruction) -> None:
+        """ HALT: Stop execution. """
         self.state.halt()
 
-    def _handle_target(self, instr: Instruction) -> None:
-        """TARGET: Define a jump target at current PC."""
+    def _runner_TARGET(self, instr: Instruction) -> None:
+        """ TARGET: Define a jump target at current PC. """
         target_id = instr.operands[0]
         self.state.jc.define_target(target_id, self.state.pc)
 
-    def _handle_jump(self, instr: Instruction) -> None:
-        """JUMP: Unconditional jump to target."""
+    def _runner_JUMP(self, instr: Instruction) -> None:
+        """ JUMP: Unconditional jump to target. """
         target_id = instr.operands[0]
         pc = self.state.jc.resolve_target(target_id)
         if pc is None:
@@ -323,8 +323,8 @@ class Executor:
         # Jump to target, then step() will advance to next instruction
         self.state.jump_to(pc)
 
-    def _handle_jumpi(self, instr: Instruction) -> None:
-        """JUMPI: Jump to target if top of stack is non-zero."""
+    def _runner_JUMPI(self, instr: Instruction) -> None:
+        """ JUMPI: Jump to target if top of stack is non-zero. """
         target_id = instr.operands[0]
         condition = self.state.pop()
 
@@ -334,22 +334,22 @@ class Executor:
                 raise TargetNotFound(target_id)
             self.state.jump_to(pc)
 
-    def _handle_range(self, instr: Instruction) -> None:
-        """RANGE: Start range loop. Pop count, start -> iterate [start, start+count)."""
+    def _runner_RANGE(self, instr: Instruction) -> None:
+        """ RANGE: Start range loop. Pop count, start -> iterate [start, start+count). """
         count, start = self.state.pop_n(2)
         # Store current PC + 1 as the loop target (next instruction)
         self.state.jc.push_loop_range(self.state.pc + 1, start, count)
 
-    def _handle_iter(self, instr: Instruction) -> None:
-        """ITER: Start vec iteration. Pop end_idx, start_idx -> iterate vec[start:end]."""
+    def _runner_ITER(self, instr: Instruction) -> None:
+        """ ITER: Start vec iteration. Pop end_idx, start_idx -> iterate vec[start:end]. """
         reg = instr.operands[0]
         vec = self._get_register_as_vec(reg)
         end_idx, start_idx = self.state.pop_n(2)
         # Store current PC + 1 as the loop target (next instruction)
         self.state.jc.push_loop_iter(self.state.pc + 1, vec, start_idx, end_idx)
 
-    def _handle_next(self, instr: Instruction) -> None:
-        """NEXT: Advance loop index, jump back if more, else pop frame."""
+    def _runner_NEXT(self, instr: Instruction) -> None:
+        """ NEXT: Advance loop index, jump back if more, else pop frame. """
         frame = self.state.jc.current_loop()
         if frame is None:
             from .errors import LoopError
@@ -360,265 +360,237 @@ class Executor:
             self.state.jump_to(frame.target)
         # else: loop finished, frame popped, continue normally
 
-    def _handle_lval(self, instr: Instruction) -> None:
-        """LVAL: Copy current loop value to register."""
+    def _runner_LVAL(self, instr: Instruction) -> None:
+        """ LVAL: Copy current loop value to register. """
         reg = instr.operands[0]
-        value = self.state.jc.current_value()
+        value = self.state.jc.current_loop_value()
         self.state.set_register(reg, value)
 
-    # =========================================================================
-    # Stack & Register I/O Handlers
-    # =========================================================================
-
-    def _handle_push(self, instr: Instruction) -> None:
-        """PUSH: Push immediate value onto stack."""
+    def _runner_PUSH(self, instr: Instruction) -> None:
+        """ PUSH: Push immediate value onto stack. """
         value = instr.operands[0]
         self.state.push(value)
 
-    def _handle_pop(self, instr: Instruction) -> None:
-        """POP: Pop and discard top of stack."""
+    def _runner_POP(self, instr: Instruction) -> None:
+        """ POP: Pop and discard top of stack. """
         self.state.pop()
 
-    def _handle_dupl(self, instr: Instruction) -> None:
-        """DUPL: Duplicate top of stack."""
+    def _runner_DUPL(self, instr: Instruction) -> None:
+        """ DUPL: Duplicate top of stack. """
         value = self.state.peek()
         self.state.push(value)
 
-    def _handle_swap(self, instr: Instruction) -> None:
-        """SWAP: Swap top two stack values."""
+    def _runner_SWAP(self, instr: Instruction) -> None:
+        """ SWAP: Swap top two stack values. """
         a, b = self.state.pop_n(2)
         self.state.push(a)
         self.state.push(b)
 
-    def _handle_load(self, instr: Instruction) -> None:
-        """LOAD: Load register value onto stack."""
+    def _runner_LOAD(self, instr: Instruction) -> None:
+        """ LOAD: Load register value onto stack. """
         reg = instr.operands[0]
         value = self._get_register_as_int(reg)
         self.state.push(value)
 
-    def _handle_stow(self, instr: Instruction) -> None:
-        """STOW: Store top of stack into register."""
+    def _runner_STOW(self, instr: Instruction) -> None:
+        """ STOW: Store top of stack into register. """
         reg = instr.operands[0]
         value = self.state.pop()
         self.state.set_register(reg, value)
 
-    def _handle_input(self, instr: Instruction) -> None:
-        """INPUT: Load input slot into register."""
+    def _runner_INPUT(self, instr: Instruction) -> None:
+        """ INPUT: Load input slot into register. """
         reg = instr.operands[0]
         slot = self.state.pop()
         value = self.state.get_input(slot)
         self.state.set_register(reg, value)
 
-    def _handle_output(self, instr: Instruction) -> None:
-        """OUTPUT: Write register to output slot."""
+    def _runner_OUTPUT(self, instr: Instruction) -> None:
+        """ OUTPUT: Write register to output slot. """
         reg = instr.operands[0]
         slot = self.state.pop()
         value = self.state.get_register(reg)
         self.state.set_output(slot, value)
 
-    # =========================================================================
-    # Arithmetic Handlers
-    # =========================================================================
-
-    def _handle_add(self, instr: Instruction) -> None:
-        """ADD: push(pop() + pop())."""
+    def _runner_ADD(self, instr: Instruction) -> None:
+        """ ADD: push(pop() + pop()). """
         b, a = self.state.pop_n(2)
         self.state.push(a + b)
 
-    def _handle_sub(self, instr: Instruction) -> None:
-        """SUB: push(second - top)."""
+    def _runner_SUB(self, instr: Instruction) -> None:
+        """ SUB: push(second - top). """
         b, a = self.state.pop_n(2)
         self.state.push(a - b)
 
-    def _handle_mul(self, instr: Instruction) -> None:
-        """MUL: push(pop() * pop())."""
+    def _runner_MUL(self, instr: Instruction) -> None:
+        """ MUL: push(pop() * pop()). """
         b, a = self.state.pop_n(2)
         self.state.push(a * b)
 
-    def _handle_div(self, instr: Instruction) -> None:
-        """DIV: push(second / top)."""
+    def _runner_DIV(self, instr: Instruction) -> None:
+        """ DIV: push(second / top). """
         b, a = self.state.pop_n(2)
         if b == 0:
             raise DivisionByZero()
         self.state.push(a // b)
 
-    def _handle_mod(self, instr: Instruction) -> None:
-        """MOD: push(second % top)."""
+    def _runner_MOD(self, instr: Instruction) -> None:
+        """ MOD: push(second % top). """
         b, a = self.state.pop_n(2)
         if b == 0:
             raise DivisionByZero()
         self.state.push(a % b)
 
-    def _handle_neg(self, instr: Instruction) -> None:
-        """NEG: Negate top value."""
+    def _runner_NEG(self, instr: Instruction) -> None:
+        """ NEG: Negate top value. """
         value = self.state.pop()
         self.state.push(-value)
 
-    # =========================================================================
-    # Comparison Handlers
-    # =========================================================================
-
-    def _handle_eq(self, instr: Instruction) -> None:
-        """EQ: push(1 if second == top else 0)."""
+    def _runner_EQ(self, instr: Instruction) -> None:
+        """ EQ: push(1 if second == top else 0). """
         b, a = self.state.pop_n(2)
         self.state.push(1 if a == b else 0)
 
-    def _handle_lt(self, instr: Instruction) -> None:
-        """LT: push(1 if second < top else 0)."""
+    def _runner_LT(self, instr: Instruction) -> None:
+        """ LT: push(1 if second < top else 0). """
         b, a = self.state.pop_n(2)
         self.state.push(1 if a < b else 0)
 
-    def _handle_gt(self, instr: Instruction) -> None:
-        """GT: push(1 if second > top else 0)."""
+    def _runner_GT(self, instr: Instruction) -> None:
+        """ GT: push(1 if second > top else 0). """
         b, a = self.state.pop_n(2)
         self.state.push(1 if a > b else 0)
 
-    def _handle_lte(self, instr: Instruction) -> None:
-        """LTE: push(1 if second <= top else 0)."""
+    def _runner_LTE(self, instr: Instruction) -> None:
+        """ LTE: push(1 if second <= top else 0). """
         b, a = self.state.pop_n(2)
         self.state.push(1 if a <= b else 0)
 
-    def _handle_gte(self, instr: Instruction) -> None:
-        """GTE: push(1 if second >= top else 0)."""
+    def _runner_GTE(self, instr: Instruction) -> None:
+        """ GTE: push(1 if second >= top else 0). """
         b, a = self.state.pop_n(2)
         self.state.push(1 if a >= b else 0)
 
-    # =========================================================================
-    # Boolean Handlers
-    # =========================================================================
-
-    def _handle_not(self, instr: Instruction) -> None:
-        """NOT: push(1 if top == 0 else 0)."""
+    def _runner_NOT(self, instr: Instruction) -> None:
+        """ NOT: push(1 if top == 0 else 0). """
         value = self.state.pop()
         self.state.push(1 if value == 0 else 0)
 
-    def _handle_and(self, instr: Instruction) -> None:
-        """AND: push(1 if both non-zero else 0)."""
+    def _runner_AND(self, instr: Instruction) -> None:
+        """ AND: push(1 if both non-zero else 0). """
         b, a = self.state.pop_n(2)
         self.state.push(1 if (a != 0 and b != 0) else 0)
 
-    def _handle_or(self, instr: Instruction) -> None:
-        """OR: push(1 if either non-zero else 0)."""
+    def _runner_OR(self, instr: Instruction) -> None:
+        """ OR: push(1 if either non-zero else 0). """
         b, a = self.state.pop_n(2)
         self.state.push(1 if (a != 0 or b != 0) else 0)
 
-    def _handle_xor(self, instr: Instruction) -> None:
-        """XOR: push(1 if exactly one non-zero else 0)."""
+    def _runner_XOR(self, instr: Instruction) -> None:
+        """ XOR: push(1 if exactly one non-zero else 0). """
         b, a = self.state.pop_n(2)
         self.state.push(1 if ((a != 0) != (b != 0)) else 0)
 
-    # =========================================================================
-    # Bitwise Handlers
-    # =========================================================================
-
-    def _handle_band(self, instr: Instruction) -> None:
-        """BAND: Bitwise AND."""
+    def _runner_BAND(self, instr: Instruction) -> None:
+        """ BAND: Bitwise AND. """
         b, a = self.state.pop_n(2)
         self.state.push(a & b)
 
-    def _handle_bor(self, instr: Instruction) -> None:
-        """BOR: Bitwise OR."""
+    def _runner_BOR(self, instr: Instruction) -> None:
+        """ BOR: Bitwise OR. """
         b, a = self.state.pop_n(2)
         self.state.push(a | b)
 
-    def _handle_bxor(self, instr: Instruction) -> None:
-        """BXOR: Bitwise XOR."""
+    def _runner_BXOR(self, instr: Instruction) -> None:
+        """ BXOR: Bitwise XOR. """
         b, a = self.state.pop_n(2)
         self.state.push(a ^ b)
 
-    def _handle_bnot(self, instr: Instruction) -> None:
-        """BNOT: Bitwise NOT (complement)."""
+    def _runner_BNOT(self, instr: Instruction) -> None:
+        """ BNOT: Bitwise NOT (complement). """
         value = self.state.pop()
         self.state.push(~value)
 
-    def _handle_shl(self, instr: Instruction) -> None:
-        """SHL: push(second << top)."""
+    def _runner_SHL(self, instr: Instruction) -> None:
+        """ SHL: push(second << top). """
         b, a = self.state.pop_n(2)
         self.state.push(a << b)
 
-    def _handle_shr(self, instr: Instruction) -> None:
-        """SHR: push(second >> top)."""
+    def _runner_SHR(self, instr: Instruction) -> None:
+        """ SHR: push(second >> top). """
         b, a = self.state.pop_n(2)
         self.state.push(a >> b)
 
-    # =========================================================================
-    # Allocator Handlers
-    # =========================================================================
-
-    def _handle_vec(self, instr: Instruction) -> None:
-        """VEC: Create empty vec (type inferred on first push)."""
+    def _runner_VEC(self, instr: Instruction) -> None:
+        """ VEC: Create empty vec (type inferred on first push). """
         reg = instr.operands[0]
         self.state.set_register(reg, Vec())
 
-    def _handle_veci(self, instr: Instruction) -> None:
-        """VECI: Create empty vec<int>."""
+    def _runner_VECI(self, instr: Instruction) -> None:
+        """ VECI: Create empty vec<int>. """
         reg = instr.operands[0]
         vec = Vec()
         vec.element_type = VecElem("int")
         self.state.set_register(reg, vec)
 
-    def _handle_vecx(self, instr: Instruction) -> None:
-        """VECX: Create empty vec<xqmx>."""
+    def _runner_VECX(self, instr: Instruction) -> None:
+        """ VECX: Create empty vec<xqmx>. """
         reg = instr.operands[0]
         vec = Vec()
         vec.element_type = VecElem("xqmx")
         self.state.set_register(reg, vec)
 
-    def _handle_bqmx(self, instr: Instruction) -> None:
-        """BQMX: Create binary model XQMX."""
+    def _runner_BQMX(self, instr: Instruction) -> None:
+        """ BQMX: Create binary model XQMX. """
         reg = instr.operands[0]
         size = self.state.pop()
         xqmx = XQMX.binary_model(size)
         self.state.set_register(reg, xqmx)
 
-    def _handle_sqmx(self, instr: Instruction) -> None:
-        """SQMX: Create spin model XQMX."""
+    def _runner_SQMX(self, instr: Instruction) -> None:
+        """ SQMX: Create spin model XQMX. """
         reg = instr.operands[0]
         size = self.state.pop()
         xqmx = XQMX.spin_model(size)
         self.state.set_register(reg, xqmx)
 
-    def _handle_xqmx(self, instr: Instruction) -> None:
-        """XQMX: Create discrete model XQMX."""
+    def _runner_XQMX(self, instr: Instruction) -> None:
+        """ XQMX: Create discrete model XQMX. """
         reg = instr.operands[0]
         k, size = self.state.pop_n(2)
         xqmx = XQMX.discrete_model(size, k)
         self.state.set_register(reg, xqmx)
 
-    def _handle_bsmx(self, instr: Instruction) -> None:
-        """BSMX: Create binary sample XQMX."""
+    def _runner_BSMX(self, instr: Instruction) -> None:
+        """ BSMX: Create binary sample XQMX. """
         reg = instr.operands[0]
         size = self.state.pop()
         xqmx = XQMX.binary_sample(size)
         self.state.set_register(reg, xqmx)
 
-    def _handle_ssmx(self, instr: Instruction) -> None:
-        """SSMX: Create spin sample XQMX."""
+    def _runner_SSMX(self, instr: Instruction) -> None:
+        """ SSMX: Create spin sample XQMX. """
         reg = instr.operands[0]
         size = self.state.pop()
         xqmx = XQMX.spin_sample(size)
         self.state.set_register(reg, xqmx)
 
-    def _handle_xsmx(self, instr: Instruction) -> None:
-        """XSMX: Create discrete sample XQMX."""
+    def _runner_XSMX(self, instr: Instruction) -> None:
+        """ XSMX: Create discrete sample XQMX. """
         reg = instr.operands[0]
         k, size = self.state.pop_n(2)
         xqmx = XQMX.discrete_sample(size, k)
         self.state.set_register(reg, xqmx)
 
-    # =========================================================================
-    # Vec Access Handlers
-    # =========================================================================
-
-    def _handle_vecpush(self, instr: Instruction) -> None:
-        """VECPUSH: Push value onto vec (infers/validates type)."""
+    def _runner_VECPUSH(self, instr: Instruction) -> None:
+        """ VECPUSH: Push value onto vec (infers/validates type). """
         reg = instr.operands[0]
         vec = self._get_register_as_vec(reg)
         value = self.state.pop()
         vec.push(value)
 
-    def _handle_vecget(self, instr: Instruction) -> None:
-        """VECGET: Get vec[index]."""
+    def _runner_VECGET(self, instr: Instruction) -> None:
+        """ VECGET: Get vec[index]. """
         reg = instr.operands[0]
         vec = self._get_register_as_vec(reg)
         index = self.state.pop()
@@ -628,79 +600,71 @@ class Executor:
         else:
             raise TypeMismatch("int", type(value).__name__, "VECGET result")
 
-    def _handle_vecset(self, instr: Instruction) -> None:
-        """VECSET: Set vec[index] = value."""
+    def _runner_VECSET(self, instr: Instruction) -> None:
+        """ VECSET: Set vec[index] = value. """
         reg = instr.operands[0]
         vec = self._get_register_as_vec(reg)
         value, index = self.state.pop_n(2)
         vec.set(index, value)
 
-    def _handle_veclen(self, instr: Instruction) -> None:
-        """VECLEN: Push vec length onto stack."""
+    def _runner_VECLEN(self, instr: Instruction) -> None:
+        """ VECLEN: Push vec length onto stack. """
         reg = instr.operands[0]
         vec = self._get_register_as_vec(reg)
         self.state.push(vec.length)
 
-    # =========================================================================
-    # XQMX Access Handlers
-    # =========================================================================
-
-    def _handle_getline(self, instr: Instruction) -> None:
-        """GETLINE: Get linear coefficient."""
+    def _runner_GETLINE(self, instr: Instruction) -> None:
+        """ GETLINE: Get linear coefficient. """
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         index = self.state.pop()
         value = xqmx.get_linear(index)
         self.state.push(int(value))
 
-    def _handle_setline(self, instr: Instruction) -> None:
-        """SETLINE: Set linear coefficient."""
+    def _runner_SETLINE(self, instr: Instruction) -> None:
+        """ SETLINE: Set linear coefficient. """
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         value, index = self.state.pop_n(2)
         xqmx.set_linear(index, float(value))
 
-    def _handle_addline(self, instr: Instruction) -> None:
-        """ADDLINE: Add to linear coefficient."""
+    def _runner_ADDLINE(self, instr: Instruction) -> None:
+        """ ADDLINE: Add to linear coefficient. """
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         delta, index = self.state.pop_n(2)
         xqmx.add_linear(index, float(delta))
 
-    def _handle_getquad(self, instr: Instruction) -> None:
-        """GETQUAD: Get quadratic coefficient."""
+    def _runner_GETQUAD(self, instr: Instruction) -> None:
+        """ GETQUAD: Get quadratic coefficient. """
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         j, i = self.state.pop_n(2)
         value = xqmx.get_quadratic(i, j)
         self.state.push(int(value))
 
-    def _handle_setquad(self, instr: Instruction) -> None:
-        """SETQUAD: Set quadratic coefficient."""
+    def _runner_SETQUAD(self, instr: Instruction) -> None:
+        """ SETQUAD: Set quadratic coefficient. """
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         value, j, i = self.state.pop_n(3)
         xqmx.set_quadratic(i, j, float(value))
 
-    def _handle_addquad(self, instr: Instruction) -> None:
-        """ADDQUAD: Add to quadratic coefficient."""
+    def _runner_ADDQUAD(self, instr: Instruction) -> None:
+        """ ADDQUAD: Add to quadratic coefficient. """
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         delta, j, i = self.state.pop_n(3)
         xqmx.add_quadratic(i, j, float(delta))
 
-    # =========================================================================
-    # Vector Math Handlers
-    # =========================================================================
-
-    def _handle_idxgrid(self, instr: Instruction) -> None:
-        """IDXGRID: Convert (row, col) to flat index using cols."""
+    def _runner_IDXGRID(self, instr: Instruction) -> None:
+        """ IDXGRID: Convert (row, col) to flat index using cols. """
         cols, j, i = self.state.pop_n(3)  # pop cols, col, row
         index = i * cols + j
         self.state.push(index)
 
-    def _handle_idxtriu(self, instr: Instruction) -> None:
-        """IDXTRIU: Convert (i, j) to upper triangular index."""
+    def _runner_IDXTRIU(self, instr: Instruction) -> None:
+        """ IDXTRIU: Convert (i, j) to upper triangular index. """
         j, i = self.state.pop_n(2)
         # Ensure i < j for upper triangular
         if i > j:
@@ -708,56 +672,48 @@ class Executor:
         idx = j * (j - 1) // 2 + i
         self.state.push(idx)
 
-    # =========================================================================
-    # XQMX Grid Handlers
-    # =========================================================================
-
-    def _handle_resize(self, instr: Instruction) -> None:
-        """RESIZE: Set grid dimensions."""
+    def _runner_RESIZE(self, instr: Instruction) -> None:
+        """ RESIZE: Set grid dimensions. """
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         cols, rows = self.state.pop_n(2)
         xqmx.rows = rows
         xqmx.cols = cols
 
-    def _handle_rowfind(self, instr: Instruction) -> None:
-        """ROWFIND: Find first col where row has value."""
+    def _runner_ROWFIND(self, instr: Instruction) -> None:
+        """ ROWFIND: Find first col where row has value. """
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         value, row = self.state.pop_n(2)
         col = row_find(xqmx, row, value)
         self.state.push(col)
 
-    def _handle_colfind(self, instr: Instruction) -> None:
-        """COLFIND: Find first row where col has value."""
+    def _runner_COLFIND(self, instr: Instruction) -> None:
+        """ COLFIND: Find first row where col has value. """
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         value, col = self.state.pop_n(2)
         row = col_find(xqmx, col, value)
         self.state.push(row)
 
-    def _handle_rowsum(self, instr: Instruction) -> None:
-        """ROWSUM: Sum all values in row."""
+    def _runner_ROWSUM(self, instr: Instruction) -> None:
+        """ ROWSUM: Sum all values in row. """
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         row = self.state.pop()
         total = xqmx_row_sum(xqmx, row)
         self.state.push(int(total))
 
-    def _handle_colsum(self, instr: Instruction) -> None:
-        """COLSUM: Sum all values in column."""
+    def _runner_COLSUM(self, instr: Instruction) -> None:
+        """ COLSUM: Sum all values in column. """
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         col = self.state.pop()
         total = xqmx_col_sum(xqmx, col)
         self.state.push(int(total))
 
-    # =========================================================================
-    # XQMX High-Level Handlers
-    # =========================================================================
-
-    def _handle_onehot(self, instr: Instruction) -> None:
-        """ONEHOT: Add one-hot constraint."""
+    def _runner_ONEHOT(self, instr: Instruction) -> None:
+        """ ONEHOT: Add one-hot constraint. """
         reg = instr.operands[0]
         model = self._get_register_as_xqmx(reg)
         penalty, row = self.state.pop_n(2)
@@ -770,22 +726,22 @@ class Executor:
         indices = row_indices(model, row)
         expand_onehot(model, indices, float(penalty))
 
-    def _handle_exclude(self, instr: Instruction) -> None:
-        """EXCLUDE: Add exclusion constraint with penalty."""
+    def _runner_EXCLUDE(self, instr: Instruction) -> None:
+        """ EXCLUDE: Add exclusion constraint with penalty. """
         reg = instr.operands[0]
         model = self._get_register_as_xqmx(reg)
         penalty, j, i = self.state.pop_n(3)
         expand_exclude(model, i, j, float(penalty))
 
-    def _handle_implies(self, instr: Instruction) -> None:
-        """IMPLIES: Add implication constraint with penalty."""
+    def _runner_IMPLIES(self, instr: Instruction) -> None:
+        """ IMPLIES: Add implication constraint with penalty. """
         reg = instr.operands[0]
         model = self._get_register_as_xqmx(reg)
         penalty, j, i = self.state.pop_n(3)
         expand_implies(model, i, j, float(penalty))
 
-    def _handle_energy(self, instr: Instruction) -> None:
-        """ENERGY: Compute energy of sample against model."""
+    def _runner_ENERGY(self, instr: Instruction) -> None:
+        """ ENERGY: Compute energy of sample against model. """
         model_reg = instr.operands[0]
         sample_reg = instr.operands[1]
         model = self._get_register_as_xqmx(model_reg)

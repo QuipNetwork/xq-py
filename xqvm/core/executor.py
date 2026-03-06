@@ -7,10 +7,10 @@ decoding opcodes, and dispatching to handler methods.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol, runtime_checkable
 
 from .opcodes import Opcode
+from .program import Instruction, Program
 from .state import MachineState
 from .vector import Vec, VecElem
 from .xqmx import (
@@ -30,38 +30,6 @@ from .errors import (
     TargetNotFound,
     TypeMismatch,
 )
-
-@dataclass(frozen=True)
-class Instruction:
-    """
-    A single XQVM instruction.
-
-    Attributes:
-        opcode: The operation to perform
-        operands: Tuple of operand values (immediates, register indices, target IDs)
-        line: Source line number for debugging (0 if unknown)
-    """
-    opcode: Opcode
-    operands: tuple[int, ...] = ()
-    line: int = 0
-
-@dataclass
-class Program:
-    """
-    A complete XQVM program.
-
-    Attributes:
-        instructions: List of instructions to execute
-        name: Optional program name for debugging
-    """
-    instructions: list[Instruction] = field(default_factory=list)
-    name: str = ""
-
-    def __len__(self) -> int:
-        return len(self.instructions)
-
-    def __getitem__(self, index: int) -> Instruction:
-        return self.instructions[index]
 
 @runtime_checkable
 class TracerProtocol(Protocol):

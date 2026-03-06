@@ -37,7 +37,8 @@ from .xqmx import (
 )
 from .opcodes import Opcode, OpcodeMeta, OperandType
 from .state import MachineState, JumpControl, Value
-from .executor import Executor, Instruction, Program
+from .program import Instruction, Program, make_program, run_program
+from .executor import Executor
 
 __all__ = [
     # Errors
@@ -81,8 +82,11 @@ __all__ = [
     "MachineState",
     "JumpControl",
     "Value",
-    # Executor
-    "Executor",
+    # Program
     "Instruction",
     "Program",
+    "make_program",
+    "run_program",
+    # Executor
+    "Executor",
 ]

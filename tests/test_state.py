@@ -14,7 +14,6 @@ from xqvm.core.errors import (
     LoopError,
 )
 
-
 class TestStackOperations:
     """Tests for stack push/pop operations."""
 
@@ -115,7 +114,6 @@ class TestStackOperations:
         empty_state.pop()
         assert empty_state.stack_depth == 1
 
-
 class TestRegisterOperations:
     """Tests for register storage and retrieval."""
 
@@ -178,7 +176,6 @@ class TestRegisterOperations:
         assert empty_state.get_register(1) == 2
         assert empty_state.get_register(100) == 100
 
-
 class TestJumpControl:
     """Tests for JumpControl jump targets and loops."""
 
@@ -203,7 +200,6 @@ class TestJumpControl:
         assert jc.resolve_target(0) == 5
         assert jc.resolve_target(1) == 15
         assert jc.resolve_target(2) == 25
-
 
 class TestLoopRangeOperations:
     """Tests for RANGE loop operations."""
@@ -261,7 +257,6 @@ class TestLoopRangeOperations:
         jc.push_loop_range(target=1, start=0, count=3)
         assert jc.loop_depth == 2
 
-
 class TestLoopIterOperations:
     """Tests for ITER loop operations."""
 
@@ -302,7 +297,6 @@ class TestLoopIterOperations:
 
         assert values == [2, 3, 4]
 
-
 class TestNestedLoops:
     """Tests for nested loop operations."""
 
@@ -334,7 +328,6 @@ class TestNestedLoops:
         assert frame.target == 5
         assert jc.loop_depth == 1  # Still there
 
-
 class TestLoopErrors:
     """Tests for loop error conditions."""
 
@@ -365,7 +358,6 @@ class TestLoopErrors:
         """current_loop returns None outside loop."""
         jc = JumpControl()
         assert jc.current_loop() is None
-
 
 class TestIOOperations:
     """Tests for input/output slot operations."""
@@ -411,7 +403,6 @@ class TestIOOperations:
         assert empty_state.get_input(0).length == 3
         assert empty_state.get_output(0).size == 5
 
-
 class TestControlFlow:
     """Tests for PC and execution control."""
 
@@ -433,7 +424,6 @@ class TestControlFlow:
         assert empty_state.halted is False
         empty_state.halt()
         assert empty_state.halted is True
-
 
 class TestReset:
     """Tests for state reset functionality."""
@@ -479,7 +469,6 @@ class TestReset:
         empty_state.reset()
         assert empty_state.jc.resolve_target(0) is None
         assert empty_state.jc.in_loop is False
-
 
 class TestSnapshot:
     """Tests for state snapshot functionality."""

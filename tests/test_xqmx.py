@@ -22,7 +22,6 @@ from xqvm.core.xqmx import (
 )
 from xqvm.core.errors import XQMXModeError
 
-
 class TestXQMXConstruction:
     """Tests for XQMX factory methods and construction."""
 
@@ -87,7 +86,6 @@ class TestXQMXConstruction:
         with pytest.raises(ValueError):
             XQMX.discrete_model(size=10, k=1)
 
-
 class TestXQMXModeChecks:
     """Tests for mode checking methods."""
 
@@ -106,7 +104,6 @@ class TestXQMXModeChecks:
     def test_is_sample_false(self, binary_model):
         """is_sample returns False for MODEL mode."""
         assert binary_model.is_sample() is False
-
 
 class TestLinearCoefficients:
     """Tests for linear coefficient operations."""
@@ -147,7 +144,6 @@ class TestLinearCoefficients:
         """Negative index raises IndexError."""
         with pytest.raises(IndexError):
             binary_model.set_linear(-1, 1.0)
-
 
 class TestQuadraticCoefficients:
     """Tests for quadratic coefficient operations."""
@@ -201,7 +197,6 @@ class TestQuadraticCoefficients:
         except (IndexError, ValueError):
             # If it raises, that's also valid behavior
             pass
-
 
 class TestGridOperations:
     """Tests for grid-based operations."""
@@ -282,7 +277,6 @@ class TestGridOperations:
         with pytest.raises(IndexError):
             col_indices(grid_model, 10)
 
-
 class TestHLFExpandOnehot:
     """Tests for expand_onehot high-level function."""
 
@@ -312,7 +306,6 @@ class TestHLFExpandOnehot:
         with pytest.raises(XQMXModeError):
             expand_onehot(sample, [0, 1], penalty=1.0)
 
-
 class TestHLFExpandExclude:
     """Tests for expand_exclude high-level function."""
 
@@ -328,7 +321,6 @@ class TestHLFExpandExclude:
         sample = XQMX.binary_sample(size=5)
         with pytest.raises(XQMXModeError):
             expand_exclude(sample, 0, 1, penalty=1.0)
-
 
 class TestHLFExpandImplies:
     """Tests for expand_implies high-level function."""
@@ -346,7 +338,6 @@ class TestHLFExpandImplies:
         sample = XQMX.binary_sample(size=5)
         with pytest.raises(XQMXModeError):
             expand_implies(sample, 0, 1, penalty=1.0)
-
 
 class TestComputeEnergy:
     """Tests for compute_energy function."""
@@ -411,7 +402,6 @@ class TestComputeEnergy:
 
         assert compute_energy(model, sample) == 0.0
 
-
 class TestRequireModeValidators:
     """Tests for mode validation functions."""
 
@@ -423,7 +413,6 @@ class TestRequireModeValidators:
         """require_model_mode raises for SAMPLE."""
         with pytest.raises(XQMXModeError):
             require_model_mode(binary_sample, "test")
-
 
 class TestXQMXDomain:
     """Tests for XQMXDomain enum."""
@@ -437,7 +426,6 @@ class TestXQMXDomain:
     def test_domain_count(self):
         """Should have exactly 3 domains."""
         assert len(XQMXDomain) == 3
-
 
 class TestXQMXMode:
     """Tests for XQMXMode enum."""

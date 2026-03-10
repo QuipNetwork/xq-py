@@ -37,7 +37,6 @@ import random
 from xqvm.core.program import Instruction, run_program
 from xqvm.core.opcodes import Opcode as Op
 
-
 # =========================================================================
 # Encoder
 # =========================================================================
@@ -229,7 +228,6 @@ ENCODER = [
     Instruction(Op.HALT),
 ]
 
-
 # =========================================================================
 # Verifier
 # =========================================================================
@@ -300,7 +298,6 @@ VERIFIER = [
     Instruction(Op.OUTPUT, (2,)),       # output[1] = valid flag
     Instruction(Op.HALT),
 ]
-
 
 # =========================================================================
 # Decoder
@@ -440,7 +437,6 @@ def run_tsp(n: int, distances: list[int]) -> None:
     print(f"Verifier: {t_verifier:.4f}s")
     print(f"Decoder:  {t_decoder:.4f}s")
     print(f"Total:    {t_total:.4f}s")
-
 
 def run_tsp_random(n_cities: int):
     # Generate random distance matrix

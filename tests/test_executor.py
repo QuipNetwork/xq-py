@@ -22,7 +22,6 @@ from xqvm.core.errors import (
 
 from xqvm.core.program import make_program, run_program
 
-
 class TestControlFlow:
     """Tests for control flow opcodes."""
 
@@ -178,7 +177,6 @@ class TestControlFlow:
         ])
         assert ex.state.get_register(0) == 5
 
-
 class TestStackRegisterIO:
     """Tests for stack, register, and I/O opcodes."""
 
@@ -264,7 +262,6 @@ class TestStackRegisterIO:
         ex = Executor()
         output = ex.execute(prog)
         assert output[0] == 99
-
 
 class TestArithmetic:
     """Tests for arithmetic opcodes."""
@@ -358,7 +355,6 @@ class TestArithmetic:
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == 10
-
 
 class TestComparison:
     """Tests for comparison opcodes."""
@@ -483,7 +479,6 @@ class TestComparison:
         ])
         assert ex.state.peek(0) == 0
 
-
 class TestBoolean:
     """Tests for boolean logic opcodes."""
 
@@ -575,7 +570,6 @@ class TestBoolean:
         ])
         assert ex.state.peek(0) == 0
 
-
 class TestBitwise:
     """Tests for bitwise opcodes."""
 
@@ -637,7 +631,6 @@ class TestBitwise:
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == 4
-
 
 class TestAllocators:
     """Tests for allocator opcodes."""
@@ -739,7 +732,6 @@ class TestAllocators:
         assert x.is_sample()
         assert x.discrete_k == 4
 
-
 class TestVectorAccess:
     """Tests for vector access opcodes."""
 
@@ -798,7 +790,6 @@ class TestVectorAccess:
         ])
         assert ex.state.peek(0) == 3
 
-
 class TestVectorMath:
     """Tests for vector math opcodes."""
 
@@ -825,7 +816,6 @@ class TestVectorMath:
         ])
         # With i=0, j=2: idx = 2 * (2-1) / 2 + 0 = 1
         assert ex.state.peek(0) == 1
-
 
 class TestXQMXAccess:
     """Tests for XQMX coefficient access opcodes."""
@@ -920,7 +910,6 @@ class TestXQMXAccess:
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == 7
-
 
 class TestXQMXGrid:
     """Tests for XQMX grid opcodes."""
@@ -1029,7 +1018,6 @@ class TestXQMXGrid:
         ])
         assert ex.state.peek(0) == 6
 
-
 class TestXQMXHighLevel:
     """Tests for XQMX high-level function opcodes."""
 
@@ -1109,7 +1097,6 @@ class TestXQMXHighLevel:
         ])
         # Energy = 1*1 + 2*1 = 3
         assert ex.state.peek(0) == 3
-
 
 class TestErrorHandling:
     """Tests for error conditions."""
@@ -1195,7 +1182,6 @@ class TestErrorHandling:
         ])
         with pytest.raises(XQMXModeError):
             Executor().execute(prog)
-
 
 class TestTracerIntegration:
     """Tests for tracer protocol integration."""
@@ -1306,7 +1292,6 @@ class TestTracerIntegration:
 
         assert halted == [True]
 
-
 class TestExecutorHelpers:
     """Tests for Executor helper methods."""
 
@@ -1348,7 +1333,6 @@ class TestExecutorHelpers:
 
         assert ex.step() is True   # PUSH - continue
         assert ex.step() is False  # HALT - stop
-
 
 class TestProgramAndInstruction:
     """Tests for Program and Instruction classes."""

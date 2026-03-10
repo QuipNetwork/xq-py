@@ -9,7 +9,6 @@ from typing import Any
 
 from .opcodes import Opcode
 
-
 @dataclass(frozen=True)
 class Instruction:
     """
@@ -42,11 +41,9 @@ class Program:
     def __getitem__(self, index: int) -> Instruction:
         return self.instructions[index]
 
-
 def make_program(instructions: list[Instruction]) -> Program:
     """ Build a Program from a list of Instructions. """
     return Program(instructions)
-
 
 def run_program(instructions: list[Instruction], input_data: dict[int, Any] | None = None):
     """ Build and execute a program, returning executor for state inspection. """

@@ -6,7 +6,6 @@ import pytest
 
 from xqvm.core.opcodes import Opcode, OpcodeMeta, OperandType
 
-
 class TestOpcodeCount:
     """Tests for opcode count and completeness."""
 
@@ -22,7 +21,6 @@ class TestOpcodeCount:
             assert isinstance(meta.code, int)
             assert isinstance(meta.description, str)
             assert len(meta.description) > 0
-
 
 class TestOpcodeCodeLookup:
     """Tests for from_code lookup."""
@@ -46,7 +44,6 @@ class TestOpcodeCodeLookup:
             result = Opcode.from_code(op.code)
             assert result == op
 
-
 class TestOpcodeNameLookup:
     """Tests for from_name lookup."""
 
@@ -67,7 +64,6 @@ class TestOpcodeNameLookup:
         assert Opcode.from_name("INVALID") is None
         assert Opcode.from_name("") is None
         assert Opcode.from_name("NOTANOP") is None
-
 
 class TestOpcodeMetadata:
     """Tests for opcode metadata validity."""
@@ -97,7 +93,6 @@ class TestOpcodeMetadata:
                     f"{op.name} has invalid operand type: {t}"
                 )
 
-
 class TestCodeUniqueness:
     """Tests for opcode code uniqueness."""
 
@@ -110,7 +105,6 @@ class TestCodeUniqueness:
         """Each opcode must have a unique name."""
         names = [op.name for op in Opcode]
         assert len(names) == len(set(names)), "Duplicate opcode names found"
-
 
 class TestOpcodeGroupRanges:
     """Tests for opcode code ranges by group."""
@@ -170,7 +164,6 @@ class TestOpcodeGroupRanges:
         for op in xqmx_ops:
             assert 0x60 <= op.code <= 0x7F, f"{op.name} not in XQMX range"
 
-
 class TestSpecificOpcodeMetadata:
     """Tests for specific opcode metadata values."""
 
@@ -224,7 +217,6 @@ class TestSpecificOpcodeMetadata:
         assert meta.operand_count == 1
         assert meta.operand_types == (OperandType.TARGET,)
 
-
 class TestOpcodeCodeProperty:
     """Tests for opcode .code property."""
 
@@ -237,7 +229,6 @@ class TestOpcodeCodeProperty:
         """code property equals meta.code."""
         for op in Opcode:
             assert op.code == op.meta.code
-
 
 class TestOperandType:
     """Tests for OperandType enum."""

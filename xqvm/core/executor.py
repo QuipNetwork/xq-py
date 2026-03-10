@@ -220,11 +220,11 @@ class Executor:
             if handler is None:
                 raise InvalidOpcode(instr.opcode)
 
+            old_pc = self.state.pc
             handler(instr)
 
-            # Advance PC if handler didn't jump
-            # Note: HALT, JUMP, JUMPI, NEXT may modify PC or halt
-            if not self.state.halted:
+            # Advance PC only if handler didn't modify it (via jump or halt)
+            if not self.state.halted and self.state.pc == old_pc:
                 self.state.advance_pc()
 
         except Exception as e:

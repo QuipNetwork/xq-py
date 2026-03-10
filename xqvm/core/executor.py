@@ -189,6 +189,11 @@ class Executor:
             for slot, value in input_data.items():
                 self.state.set_input(slot, value)
 
+        # Pre-scan: collect all TARGET definitions so forward jumps resolve
+        for i, instr in enumerate(program.instructions):
+            if instr.opcode == Opcode.TARGET:
+                self.state.jc.define_target(instr.operands[0], i)
+
         while not self.state.halted and self.state.pc < len(program):
             self.step()
 
@@ -278,9 +283,8 @@ class Executor:
         self.state.halt()
 
     def _runner_TARGET(self, instr: Instruction) -> None:
-        """ TARGET: Define a jump target at current PC. """
-        target_id = instr.operands[0]
-        self.state.jc.define_target(target_id, self.state.pc)
+        """ TARGET: No-op (targets pre-scanned before execution). """
+        pass
 
     def _runner_JUMP(self, instr: Instruction) -> None:
         """ JUMP: Unconditional jump to target. """

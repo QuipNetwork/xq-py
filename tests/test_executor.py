@@ -65,6 +65,31 @@ class TestControlFlow:
         # Counter should be 3
         assert ex.state.get_register(0) == 3
 
+    def test_forward_jump(self):
+        """JUMP to a TARGET defined later in the program."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.STOW, (0,)),
+            Instruction(Opcode.JUMP, (0,)),        # Forward jump to target 0
+            Instruction(Opcode.PUSH, (99,)),        # Skipped
+            Instruction(Opcode.STOW, (0,)),         # Skipped
+            Instruction(Opcode.TARGET, (0,)),       # Target 0 defined after jump
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.get_register(0) == 42
+
+    def test_forward_jumpi(self):
+        """JUMPI forward to a TARGET defined later (break-out-of-loop pattern)."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (1,)),         # Non-zero condition
+            Instruction(Opcode.JUMPI, (0,)),         # Forward jump
+            Instruction(Opcode.PUSH, (99,)),         # Skipped
+            Instruction(Opcode.STOW, (0,)),          # Skipped
+            Instruction(Opcode.TARGET, (0,)),
+            Instruction(Opcode.HALT),
+        ])
+        assert not ex.state.has_register(0)
+
     def test_jumpi_taken(self):
         """JUMPI jumps when top of stack is non-zero."""
         # Define target first, then conditionally jump to it

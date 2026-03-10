@@ -87,7 +87,7 @@ Programs execute independently with no shared state. Communication occurs only t
 | Code | Opcode | Operands | Stack | Description |
 | ------ | -------- | ---------- | ------- | ------------- |
 | 0x00 | `NOP` | — | — | No operation |
-| 0x01 | `TARGET` | `.N` | — | Define jump target |
+| 0x01 | `TARGET` | `.N` | — | Mark valid jump destination |
 | 0x02 | `JUMP` | `.N` | — | Unconditional jump to target |
 | 0x03 | `JUMPI` | `.N` | pop cond | Jump to target if non-zero |
 | 0x04 | `NEXT` | — | — | Advance loop index, jump back or exit |
@@ -240,9 +240,11 @@ HALT
 ### Jump Targets
 
 - Targets use integer IDs: `.0`, `.1`, `.2` in assembly syntax
-- At bytecode level: `targets: dict[int, int]` maps target_id → pc
-- `TARGET .N` defines target N at current pc
+- `TARGET .N` marks the current position as a valid jump destination with ID N
+- Before execution, all TARGET positions are collected into `targets: dict[int, int]` (target_id → pc)
 - `JUMP .N` / `JUMPI .N` resolve target N to pc and jump
+- Both forward and backward jumps are supported
+- TARGET is a no-op during execution (marker only, resolved in pre-scan)
 
 ### Loop Semantics
 

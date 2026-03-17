@@ -87,5 +87,8 @@ dmypy.json
 .DS_Store
 Thumbs.db
 
+# Output Files
+results.txt
+
 # Claude
 *_PLAN.md

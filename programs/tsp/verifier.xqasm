@@ -1,0 +1,72 @@
+# TSP Verifier
+#
+# Validates a TSP solution sample against the encoded model.
+# Checks row and column one-hot constraints, then computes energy.
+#
+# Input:
+#   0: BQMX model (from encoder)
+#   1: BSMX sample (solution to verify)
+#   2: N (number of cities)
+#
+# Output:
+#   0: energy (int)
+#   1: valid flag (1 = valid, 0 = invalid)
+#
+# Registers:
+#   r0 = model
+#   r1 = sample
+#   r2 = valid flag
+#   r3 = N
+#   r4 = energy
+#   r10 = loop var
+
+# === Load inputs ===
+PUSH 0
+INPUT r0              # r0 = model
+PUSH 1
+INPUT r1              # r1 = sample
+PUSH 2
+INPUT r3              # r3 = N
+
+# === Initialize valid flag ===
+PUSH 1
+STOW r2               # r2 = 1
+
+# === Check row sums = 1: for row in [0, N) ===
+PUSH 0
+LOAD r3
+RANGE
+  LVAL r10
+  LOAD r10
+  ROWSUM r1
+  PUSH 1
+  EQ
+  LOAD r2
+  AND
+  STOW r2
+NEXT
+
+# === Check col sums = 1: for col in [0, N) ===
+PUSH 0
+LOAD r3
+RANGE
+  LVAL r10
+  LOAD r10
+  COLSUM r1
+  PUSH 1
+  EQ
+  LOAD r2
+  AND
+  STOW r2
+NEXT
+
+# === Compute energy ===
+ENERGY r0 r1
+STOW r4
+
+# === Output ===
+PUSH 0
+OUTPUT r4              # output[0] = energy
+PUSH 1
+OUTPUT r2              # output[1] = valid flag
+HALT

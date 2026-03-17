@@ -1,0 +1,197 @@
+# TSP Encoder
+#
+# Transforms a distance matrix into a BQMX model for the
+# Travelling Salesman Problem (generic N-city).
+#
+# Grid layout (NxN BQMX):
+#   Rows = cities (0..N-1), Cols = positions (0..N-1)
+#   Variable x[i,p] = 1 means city i is at position p.
+#
+# Input:
+#   0: N (int, city count)
+#   1: distances (vec<int>, flattened upper triangle, N*(N-1)/2 elements)
+#
+# Output:
+#   0: BQMX model (N*N variables, NxN grid)
+#
+# Registers:
+#   r0  = N
+#   r1  = distance vec
+#   r2  = N*N
+#   r4  = BQMX model
+#   r10 = ci (city i loop var)
+#   r11 = cj (city j loop var)
+#   r12 = p  (position loop var)
+#   r13 = p_next ((p+1) % N)
+#   r15 = dist (current city-pair distance)
+#   r20 = col (column constraint loop var)
+#   r21 = i   (column constraint loop var)
+#   r22 = j   (column constraint loop var)
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # r0 = N
+PUSH 1
+INPUT r1              # r1 = distances vec
+
+# === Compute N*N, allocate model, set grid ===
+LOAD r0
+DUPL
+MUL                   # N*N
+STOW r2               # r2 = N*N
+LOAD r2
+BQMX r4               # r4 = BQMX(N*N)
+LOAD r0
+LOAD r0
+RESIZE r4             # r4.grid = NxN
+
+# === Distance objective ===
+# for ci in [0, N-1):
+PUSH 0
+LOAD r0
+PUSH 1
+SUB                   # count = N - 1
+RANGE
+  LVAL r10            # r10 = ci
+
+  # for cj in [ci+1, N):
+  LOAD r10
+  PUSH 1
+  ADD                 # start = ci + 1
+  LOAD r0
+  LOAD r10
+  SUB
+  PUSH 1
+  SUB                 # count = N - ci - 1
+  RANGE
+    LVAL r11          # r11 = cj
+
+    # dist = distances[IDXTRIU(ci, cj)]
+    LOAD r10
+    LOAD r11
+    IDXTRIU
+    VECGET r1
+    STOW r15          # r15 = dist
+
+    # for p in [0, N):
+    PUSH 0
+    LOAD r0
+    RANGE
+      LVAL r12        # r12 = p
+
+      # p_next = (p + 1) % N
+      LOAD r12
+      PUSH 1
+      ADD
+      LOAD r0
+      MOD
+      STOW r13        # r13 = p_next
+
+      # ADDQUAD r4: x[ci,p] - x[cj,p_next] coupling
+      LOAD r10
+      LOAD r0
+      MUL
+      LOAD r12
+      ADD              # idx_a = ci*N + p
+      LOAD r11
+      LOAD r0
+      MUL
+      LOAD r13
+      ADD              # idx_b = cj*N + p_next
+      LOAD r15
+      ADDQUAD r4
+
+      # ADDQUAD r4: x[cj,p] - x[ci,p_next] coupling
+      LOAD r11
+      LOAD r0
+      MUL
+      LOAD r12
+      ADD              # idx_c = cj*N + p
+      LOAD r10
+      LOAD r0
+      MUL
+      LOAD r13
+      ADD              # idx_d = ci*N + p_next
+      LOAD r15
+      ADDQUAD r4
+    NEXT               # end p loop
+  NEXT                 # end cj loop
+NEXT                   # end ci loop
+
+# === Row one-hot constraints (each city in exactly one position) ===
+# for row in [0, N):
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  PUSH 0x64           # penalty = 100
+  ONEHOT r4
+NEXT
+
+# === Column one-hot constraints (each position has exactly one city) ===
+# ONEHOT only works on rows, so manually expand column constraints.
+# One-hot(sum=1): linear[idx] += -P, quadratic[idx_i, idx_j] += 2P
+# for col in [0, N):
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r20            # r20 = col
+
+  # Linear terms: for i in [0, N)
+  PUSH 0
+  LOAD r0
+  RANGE
+    LVAL r21          # r21 = i
+    # index = i * N + col
+    LOAD r21
+    LOAD r0
+    MUL
+    LOAD r20
+    ADD
+    PUSH -0x64        # -penalty
+    ADDLINE r4
+  NEXT
+
+  # Quadratic terms: for i in [0, N-1)
+  PUSH 0
+  LOAD r0
+  PUSH 1
+  SUB                 # count = N - 1
+  RANGE
+    LVAL r21          # r21 = i
+
+    # for j in [i+1, N)
+    LOAD r21
+    PUSH 1
+    ADD               # start = i + 1
+    LOAD r0
+    LOAD r21
+    SUB
+    PUSH 1
+    SUB               # count = N - i - 1
+    RANGE
+      LVAL r22        # r22 = j
+
+      # idx_i = i * N + col
+      LOAD r21
+      LOAD r0
+      MUL
+      LOAD r20
+      ADD
+      # idx_j = j * N + col
+      LOAD r22
+      LOAD r0
+      MUL
+      LOAD r20
+      ADD
+      PUSH 0xC8       # 2 * penalty = 200
+      ADDQUAD r4
+    NEXT               # end j loop
+  NEXT                 # end i loop
+NEXT                   # end col loop
+
+# === Output model ===
+PUSH 0
+OUTPUT r4
+HALT

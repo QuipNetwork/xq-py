@@ -1,0 +1,43 @@
+# TSP Decoder
+#
+# Extracts the tour order from a TSP solution sample.
+# For each position p in [0, N), finds which city is assigned
+# using COLFIND on the sample grid.
+#
+# Input:
+#   0: BSMX sample
+#   1: N (number of cities)
+#
+# Output:
+#   0: tour order as vec<int> (city at each position)
+#
+# Registers:
+#   r0  = sample
+#   r1  = N
+#   r2  = tour vec
+#   r10 = loop var (position)
+
+# === Load inputs ===
+PUSH 0
+INPUT r0              # r0 = sample
+PUSH 1
+INPUT r1              # r1 = N
+
+# === Create output vec ===
+VECI r2                # r2 = vec<int>
+
+# === For each position p in [0, N): find city ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10            # r10 = p
+  LOAD r10            # push col = p
+  PUSH 1              # push value = 1
+  COLFIND r0          # push city at position p
+  VECPUSH r2          # append to tour
+NEXT
+
+# === Output tour ===
+PUSH 0
+OUTPUT r2
+HALT

@@ -373,18 +373,23 @@ class Opcode(Enum):
     )
 
     # XQMX High Level Functions (0x70-0x7F)
-    ONEHOT = OpcodeMeta(
+    ONEHOTR = OpcodeMeta(
         0x70, 2, 0,
         1, (OperandType.REGISTER,),
-        "Add one-hot constraint",
+        "Add one-hot constraint for row",
+    )
+    ONEHOTC = OpcodeMeta(
+        0x71, 2, 0,
+        1, (OperandType.REGISTER,),
+        "Add one-hot constraint for column",
     )
     EXCLUDE = OpcodeMeta(
-        0x71, 3, 0,
+        0x72, 3, 0,
         1, (OperandType.REGISTER,),
         "Add exclusion constraint with penalty",
     )
     IMPLIES = OpcodeMeta(
-        0x72, 3, 0,
+        0x73, 3, 0,
         1, (OperandType.REGISTER,),
         "Add implication constraint with penalty",
     )
@@ -422,5 +427,5 @@ class Opcode(Enum):
         except KeyError:
             return None
 
-# Verify we have exactly 68 opcodes
-assert len(Opcode) == 68, f"Expected 68 opcodes, got {len(Opcode)}"
+# Verify we have exactly 69 opcodes
+assert len(Opcode) == 69, f"Expected 69 opcodes, got {len(Opcode)}"

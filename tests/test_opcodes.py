@@ -10,8 +10,8 @@ class TestOpcodeCount:
     """Tests for opcode count and completeness."""
 
     def test_total_opcode_count(self):
-        """Should have exactly 68 opcodes."""
-        assert len(Opcode) == 68
+        """Should have exactly 69 opcodes."""
+        assert len(Opcode) == 69
 
     def test_all_opcodes_have_metadata(self):
         """Every opcode must have valid metadata."""
@@ -160,7 +160,7 @@ class TestOpcodeGroupRanges:
                     Opcode.GETQUAD, Opcode.SETQUAD, Opcode.ADDQUAD,
                     Opcode.RESIZE, Opcode.ROWFIND, Opcode.COLFIND,
                     Opcode.ROWSUM, Opcode.COLSUM,
-                    Opcode.ONEHOT, Opcode.EXCLUDE, Opcode.IMPLIES, Opcode.ENERGY]
+                    Opcode.ONEHOTR, Opcode.ONEHOTC, Opcode.EXCLUDE, Opcode.IMPLIES, Opcode.ENERGY]
         for op in xqmx_ops:
             assert 0x60 <= op.code <= 0x7F, f"{op.name} not in XQMX range"
 

@@ -15,6 +15,8 @@ from .state import MachineState
 from .vector import Vec, VecElem
 from .xqmx import (
     XQMX,
+    row_indices,
+    col_indices,
     row_find,
     col_find,
     row_sum as xqmx_row_sum,
@@ -158,7 +160,8 @@ class Executor:
             Opcode.ROWSUM: self._runner_ROWSUM,
             Opcode.COLSUM: self._runner_COLSUM,
             # XQMX High-level
-            Opcode.ONEHOT: self._runner_ONEHOT,
+            Opcode.ONEHOTR: self._runner_ONEHOTR,
+            Opcode.ONEHOTC: self._runner_ONEHOTC,
             Opcode.EXCLUDE: self._runner_EXCLUDE,
             Opcode.IMPLIES: self._runner_IMPLIES,
             Opcode.ENERGY: self._runner_ENERGY,
@@ -684,18 +687,28 @@ class Executor:
         total = xqmx_col_sum(xqmx, col)
         self.state.push(int(total))
 
-    def _runner_ONEHOT(self, instr: Instruction) -> None:
-        """ ONEHOT: Add one-hot constraint. """
+    def _runner_ONEHOTR(self, instr: Instruction) -> None:
+        """ ONEHOTR: Add one-hot constraint for row. """
         reg = instr.operands[0]
         model = self._get_register_as_xqmx(reg)
         penalty, row = self.state.pop_n(2)
 
-        # Get indices for the row
         if model.rows == 0 or model.cols == 0:
-            raise ValueError("ONEHOT requires grid dimensions to be set")
+            raise ValueError("ONEHOTR requires grid dimensions to be set")
 
-        from .xqmx import row_indices
         indices = row_indices(model, row)
+        expand_onehot(model, indices, float(penalty))
+
+    def _runner_ONEHOTC(self, instr: Instruction) -> None:
+        """ ONEHOTC: Add one-hot constraint for column. """
+        reg = instr.operands[0]
+        model = self._get_register_as_xqmx(reg)
+        penalty, col = self.state.pop_n(2)
+
+        if model.rows == 0 or model.cols == 0:
+            raise ValueError("ONEHOTC requires grid dimensions to be set")
+
+        indices = col_indices(model, col)
         expand_onehot(model, indices, float(penalty))
 
     def _runner_EXCLUDE(self, instr: Instruction) -> None:

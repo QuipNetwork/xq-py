@@ -205,9 +205,10 @@ Programs execute independently with no shared state. Communication occurs only t
 
 | Code | Opcode | Operands | Stack | Description |
 | ------ | -------- | ---------- | ------- | ------------- |
-| 0x70 | `ONEHOT` | `<reg>` | pop penalty, row | Add one-hot constraint for row |
-| 0x71 | `EXCLUDE` | `<reg>` | pop penalty, j, i | Add exclusion constraint |
-| 0x72 | `IMPLIES` | `<reg>` | pop penalty, j, i | Add implication constraint |
+| 0x70 | `ONEHOTR` | `<reg>` | pop penalty, row | Add one-hot constraint for row |
+| 0x71 | `ONEHOTC` | `<reg>` | pop penalty, col | Add one-hot constraint for column |
+| 0x72 | `EXCLUDE` | `<reg>` | pop penalty, j, i | Add exclusion constraint |
+| 0x73 | `IMPLIES` | `<reg>` | pop penalty, j, i | Add implication constraint |
 | 0x7F | `ENERGY` | `<model> <sample>` | → push energy | Compute energy of sample against model |
 
 ---
@@ -286,7 +287,7 @@ class LoopFrame:
 
 ## XQMX Mode Semantics
 
-- **model** — `linear` and `quadratic` are Hamiltonian coefficients. Constraint opcodes (ONEHOT, EXCLUDE, IMPLIES) only valid in model mode.
+- **model** — `linear` and `quadratic` are Hamiltonian coefficients. Constraint opcodes (ONEHOTR, ONEHOTC, EXCLUDE, IMPLIES) only valid in model mode.
 - **sample** — `linear` holds variable assignments. `quadratic` is empty/unused.
 
 ### Energy Computation

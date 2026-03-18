@@ -1021,8 +1021,8 @@ class TestXQMXGrid:
 class TestXQMXHighLevel:
     """Tests for XQMX high-level function opcodes."""
 
-    def test_onehot(self):
-        """ONEHOT adds one-hot constraint for a row."""
+    def test_onehotr(self):
+        """ ONEHOTR adds one-hot constraint for a row. """
         ex = run_program([
             # Create 3x3 grid model (size=9)
             Instruction(Opcode.PUSH, (9,)),
@@ -1034,12 +1034,37 @@ class TestXQMXHighLevel:
             # Apply one-hot constraint for row 0 with penalty 1
             Instruction(Opcode.PUSH, (0,)),     # row
             Instruction(Opcode.PUSH, (1,)),     # penalty
-            Instruction(Opcode.ONEHOT, (0,)),
+            Instruction(Opcode.ONEHOTR, (0,)),
             Instruction(Opcode.HALT),
         ])
         x = ex.state.get_register(0)
-        # Should have linear and quadratic terms set
+        # Row 0 indices are [0, 1, 2]: should have linear and quadratic terms
         assert len(x.linear) > 0 or len(x.quadratic) > 0
+
+    def test_onehotc(self):
+        """ ONEHOTC adds one-hot constraint for a column. """
+        ex = run_program([
+            # Create 3x3 grid model (size=9)
+            Instruction(Opcode.PUSH, (9,)),
+            Instruction(Opcode.BQMX, (0,)),
+            # Set grid dimensions
+            Instruction(Opcode.PUSH, (3,)),     # rows
+            Instruction(Opcode.PUSH, (3,)),     # cols
+            Instruction(Opcode.RESIZE, (0,)),
+            # Apply one-hot constraint for col 0 with penalty 1
+            Instruction(Opcode.PUSH, (0,)),     # col
+            Instruction(Opcode.PUSH, (1,)),     # penalty
+            Instruction(Opcode.ONEHOTC, (0,)),
+            Instruction(Opcode.HALT),
+        ])
+        x = ex.state.get_register(0)
+        # Col 0 indices are [0, 3, 6]: should have linear and quadratic terms
+        assert x.linear.get(0) == -1
+        assert x.linear.get(3) == -1
+        assert x.linear.get(6) == -1
+        assert x.quadratic.get((0, 3)) == 2
+        assert x.quadratic.get((0, 6)) == 2
+        assert x.quadratic.get((3, 6)) == 2
 
     def test_exclude(self):
         """EXCLUDE adds exclusion constraint."""

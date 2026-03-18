@@ -1,0 +1,97 @@
+# Max-Cut Encoder
+#
+# Transforms a weighted edge list into a BQMX model for
+# the Maximum Cut problem.
+#
+# QUBO formulation:
+#   Maximize cut = Σ w_ij * (x_i + x_j - 2·x_i·x_j)
+#   Minimize (negate): linear[i] -= w, linear[j] -= w, quadratic[i,j] += 2w
+#
+# Input:
+#   0: N (int, node count)
+#   1: edges (vec<int>, flat triples [i, j, w, i, j, w, ...])
+#
+# Output:
+#   0: BQMX model (N variables)
+#
+# Registers:
+#   r0  = N
+#   r1  = edges vec
+#   r2  = edge count (veclen / 3)
+#   r4  = BQMX model
+#   r10 = e (edge index loop var)
+#   r11 = i (source node)
+#   r12 = j (target node)
+#   r13 = w (edge weight)
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # r0 = N
+PUSH 1
+INPUT r1              # r1 = edges vec
+
+# === Compute edge count ===
+VECLEN r1
+PUSH 3
+DIV
+STOW r2               # r2 = edge_count
+
+# === Allocate model ===
+LOAD r0
+BQMX r4               # r4 = BQMX(N)
+
+# === Build QUBO from edges ===
+# for e in [0, edge_count):
+PUSH 0
+LOAD r2
+RANGE
+  LVAL r10            # r10 = e
+
+  # offset = e * 3
+  LOAD r10
+  PUSH 3
+  MUL
+
+  # i = edges[offset]
+  DUPL
+  VECGET r1
+  STOW r11            # r11 = i
+
+  # j = edges[offset + 1]
+  PUSH 1
+  ADD
+  DUPL
+  VECGET r1
+  STOW r12            # r12 = j
+
+  # w = edges[offset + 2]
+  PUSH 1
+  ADD
+  VECGET r1
+  STOW r13            # r13 = w
+
+  # linear[i] -= w
+  LOAD r11
+  LOAD r13
+  NEG
+  ADDLINE r4
+
+  # linear[j] -= w
+  LOAD r12
+  LOAD r13
+  NEG
+  ADDLINE r4
+
+  # quadratic[i,j] += 2w
+  LOAD r11
+  LOAD r12
+  LOAD r13
+  PUSH 2
+  MUL
+  ADDQUAD r4
+NEXT
+
+# === Output model ===
+PUSH 0
+OUTPUT r4
+HALT

@@ -1,0 +1,41 @@
+# Max-Cut Decoder
+#
+# Extracts partition assignments from a Max-Cut solution sample.
+# For each node i in [0, N), reads sample[i] (0 or 1).
+#
+# Input:
+#   0: BSMX sample
+#   1: N (number of nodes)
+#
+# Output:
+#   0: partition assignments as vec<int> (0 or 1 per node)
+#
+# Registers:
+#   r0  = sample
+#   r1  = N
+#   r2  = partition vec
+#   r10 = loop var (node index)
+
+# === Load inputs ===
+PUSH 0
+INPUT r0              # r0 = sample
+PUSH 1
+INPUT r1              # r1 = N
+
+# === Create output vec ===
+VECI r2                # r2 = vec<int>
+
+# === For each node i in [0, N): read assignment ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10            # r10 = i
+  LOAD r10
+  GETLINE r0          # push sample[i]
+  VECPUSH r2          # append to partition
+NEXT
+
+# === Output partition ===
+PUSH 0
+OUTPUT r2
+HALT

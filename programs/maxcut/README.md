@@ -75,6 +75,18 @@ python -m programs.maxcut.runner --trace | tee results.txt
 python -m programs.maxcut.runner --bench 4 8 16 | tee results.txt
 ```
 
+Disable the solver and use a hardcoded bisection sample:
+
+```sh
+python -m programs.maxcut.runner --no-solve
+```
+
+Print the full XQMX coefficient matrix:
+
+```sh
+python -m programs.maxcut.runner --matrix
+```
+
 Options:
 
 ```text
@@ -84,4 +96,6 @@ Options:
 --trace-compact     Trace with compact one-line output
 --seed INT          Random seed (default: 42)
 --src {asm,cp}      Program source directory (default: asm)
+--matrix            Print the full XQMX coefficient matrix
+--no-solve          Disable solver and use a hardcoded sample instead
 ```

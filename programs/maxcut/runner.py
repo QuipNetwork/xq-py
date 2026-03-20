@@ -18,7 +18,7 @@ from xqvm.core.vector import Vec
 from xqvm.core.xqmx import XQMX
 
 from tools.tracer import Tracer
-from tools.visualizer import render_info
+from tools.visualizer import render_info, render_matrix
 
 if TYPE_CHECKING:
     from xqsa import Backend
@@ -94,6 +94,7 @@ def run_pipeline(
     trace_verbosity: int | None = None,
     source_dir: Path | None = None,
     solver: Backend | None = None,
+    show_matrix: bool = False,
 ) -> dict[str, Any]:
     """
     Run the full Max-Cut encoder-verifier-decoder pipeline.
@@ -158,8 +159,13 @@ def run_pipeline(
         print(f"\n{'=' * 50}")
         print(f"Max-Cut N={n}, E={len(edges)}")
         print(f"{'=' * 50}")
+        print(f"\n--- Edges ---")
+        for i, j, w in edges:
+            print(f"  ({i}, {j}) w={w}")
         print(f"\n--- Model ---")
         print(render_info(model))
+        if show_matrix:
+            print(render_matrix(model))
         print(f"\n--- Results ---")
         print(f"Energy:         {energy}")
         print(f"Valid:          {valid} ({'PASS' if valid else 'FAIL'})")
@@ -243,6 +249,10 @@ if __name__ == "__main__":
         help="Problem size for single run (default: 5)",
     )
     parser.add_argument(
+        "--matrix", action="store_true",
+        help="Print the full XQMX coefficient matrix",
+    )
+    parser.add_argument(
         "--no-solve", action="store_true",
         help="Disable solver and use a hardcoded sample instead",
     )
@@ -265,4 +275,4 @@ if __name__ == "__main__":
         rng = random.Random(args.seed)
         n = args.n
         edges = generate_random_graph(n, rng)
-        run_pipeline(n, edges, verbose=True, trace_verbosity=args.trace, source_dir=source_dir, solver=sa_solver)
+        run_pipeline(n, edges, verbose=True, trace_verbosity=args.trace, source_dir=source_dir, solver=sa_solver, show_matrix=args.matrix)

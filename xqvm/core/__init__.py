@@ -34,6 +34,8 @@ from .xqmx import (
     expand_exclude,
     expand_implies,
     compute_energy,
+    # Index helpers
+    triu,
 )
 from .opcodes import Opcode, OpcodeMeta, OperandType
 from .state import MachineState, JumpControl, Value
@@ -74,6 +76,8 @@ __all__ = [
     "expand_exclude",
     "expand_implies",
     "compute_energy",
+    # Index helpers
+    "triu",
     # Opcodes
     "Opcode",
     "OpcodeMeta",

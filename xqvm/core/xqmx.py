@@ -403,3 +403,9 @@ def compute_energy(model: XQMX, sample: XQMX) -> float:
         energy += coeff * x_i * x_j
 
     return energy
+
+def triu(i: int, j: int) -> int:
+    """ Upper triangular index: maps (i, j) to a linear index (auto-swaps so i < j). """
+    if i >= j:
+        i, j = j, i
+    return j * (j - 1) // 2 + i

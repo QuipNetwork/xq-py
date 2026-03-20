@@ -7,7 +7,7 @@ A constraint programming DSL that compiles high-level problem descriptions into 
 Instead of writing `.xqasm` by hand, define your problem in Python using symbolic expressions, loops, and model operations. XQCP records these operations and compiles them into assembly that the XQVM executor can run directly.
 
 ```python
-from xqvm.cp import Problem, Types
+from xqcp import Problem, Types
 from xqvm.core import XQMXDomain
 
 problem = Problem("MyProblem")
@@ -149,7 +149,7 @@ All symbolic types (`InputRef`, `LoopVar`, `RegLoad`, `Literal`) support:
 ### Helpers
 
 ```python
-from xqvm.cp import triu
+from xqcp import triu
 
 idx = triu(i, j)    # upper triangular index, compiles to IDXTRIU
 ```

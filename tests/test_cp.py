@@ -2,7 +2,7 @@
 Tests for the constraint programming DSL (xqvm.cp).
 """
 
-from xqvm.cp import Problem, Types, CompiledPrograms, triu
+from xqcp import Problem, Types, CompiledPrograms, triu
 from xqvm.core import XQMXDomain
 
 # ---------------------------------------------------------------------------
@@ -55,31 +55,31 @@ class TestExpressions:
     """ Test symbolic expression emission. """
 
     def test_literal(self) -> None:
-        from xqvm.cp import Literal
+        from xqcp import Literal
         lines: list[str] = []
         Literal(42).emit(lines, 0)
         assert lines == ["PUSH 42"]
 
     def test_literal_hex(self) -> None:
-        from xqvm.cp import Literal
+        from xqcp import Literal
         lines: list[str] = []
         Literal(100).emit(lines, 0)
         assert lines == ["PUSH 0x64"]
 
     def test_regload(self) -> None:
-        from xqvm.cp import RegLoad
+        from xqcp import RegLoad
         lines: list[str] = []
         RegLoad(3).emit(lines, 0)
         assert lines == ["LOAD r3"]
 
     def test_binop_add(self) -> None:
-        from xqvm.cp import Literal, BinOp
+        from xqcp import Literal, BinOp
         lines: list[str] = []
         BinOp("ADD", Literal(1), Literal(2)).emit(lines, 0)
         assert lines == ["PUSH 1", "PUSH 2", "ADD"]
 
     def test_input_ref_arithmetic(self) -> None:
-        from xqvm.cp import InputRef
+        from xqcp import InputRef
         n = InputRef(0, "n", Types.Int)
         expr = n - 1
         lines: list[str] = []
@@ -87,7 +87,7 @@ class TestExpressions:
         assert lines == ["LOAD r0", "PUSH 1", "SUB"]
 
     def test_loop_var_arithmetic(self) -> None:
-        from xqvm.cp import LoopVar
+        from xqcp import LoopVar
         v = LoopVar(5, "v5")
         expr = (v + 1) % LoopVar(0, "n")
         lines: list[str] = []
@@ -95,7 +95,7 @@ class TestExpressions:
         assert lines == ["LOAD r5", "PUSH 1", "ADD", "LOAD r0", "MOD"]
 
     def test_triu_expr(self) -> None:
-        from xqvm.cp import LoopVar
+        from xqcp import LoopVar
         ci = LoopVar(10, "ci")
         cj = LoopVar(11, "cj")
         expr = triu(ci, cj)
@@ -104,7 +104,7 @@ class TestExpressions:
         assert lines == ["LOAD r10", "LOAD r11", "IDXTRIU"]
 
     def test_vecget_expr(self) -> None:
-        from xqvm.cp import InputRef, LoopVar
+        from xqcp import InputRef, LoopVar
         v = InputRef(1, "distances", Types.Vec)
         idx = LoopVar(5, "i")
         expr = v.get(idx)
@@ -113,7 +113,7 @@ class TestExpressions:
         assert lines == ["LOAD r5", "VECGET r1"]
 
     def test_indentation(self) -> None:
-        from xqvm.cp import Literal
+        from xqcp import Literal
         lines: list[str] = []
         Literal(1).emit(lines, 2)
         assert lines == ["    PUSH 1"]

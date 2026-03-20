@@ -11,7 +11,7 @@ Usage:
 
 from pathlib import Path
 
-from xqvm.cp import Problem, Types, triu
+from xqcp import Problem, Types, triu
 from xqvm.core import XQMXDomain
 
 OUTPUT_DIR = Path(__file__).parent

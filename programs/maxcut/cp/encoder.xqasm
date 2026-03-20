@@ -1,0 +1,58 @@
+# === Inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+
+# === Allocations ===
+LOAD r0
+BQMX r2
+
+# === Objective ===
+VECLEN r1
+PUSH 3
+DIV
+STOW r3
+PUSH 0
+LOAD r3
+RANGE
+  LVAL r4
+  LOAD r4
+  PUSH 3
+  MUL
+  VECGET r1
+  STOW r5
+  LOAD r4
+  PUSH 3
+  MUL
+  PUSH 1
+  ADD
+  VECGET r1
+  STOW r6
+  LOAD r4
+  PUSH 3
+  MUL
+  PUSH 2
+  ADD
+  VECGET r1
+  STOW r7
+  LOAD r5
+  LOAD r7
+  NEG
+  ADDLINE r2
+  LOAD r6
+  LOAD r7
+  NEG
+  ADDLINE r2
+  LOAD r5
+  LOAD r6
+  LOAD r7
+  PUSH 2
+  MUL
+  ADDQUAD r2
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r2
+HALT

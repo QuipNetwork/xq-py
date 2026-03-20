@@ -1,0 +1,41 @@
+# === Inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+
+# === Validity checks ===
+PUSH 1
+STOW r3
+
+# Check all variables are binary
+PUSH 0
+LOAD r2
+RANGE
+  LVAL r10
+  LOAD r10
+  GETLINE r1
+  DUPL
+  PUSH 0
+  EQ
+  SWAP
+  PUSH 1
+  EQ
+  OR
+  LOAD r3
+  AND
+  STOW r3
+NEXT
+
+# === Energy ===
+ENERGY r0 r1
+STOW r4
+
+# === Output ===
+PUSH 0
+OUTPUT r4
+PUSH 1
+OUTPUT r3
+HALT

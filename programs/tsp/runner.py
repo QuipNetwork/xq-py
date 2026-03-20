@@ -13,24 +13,20 @@ from typing import Any
 from xqvm.assembler import assemble, AssembledProgram
 from xqvm.core.executor import Executor
 from xqvm.core.vector import Vec
-from xqvm.core.xqmx import XQMX
+from xqvm.core.xqmx import XQMX, triu
 
 from tools.tracer import Tracer
 from tools.visualizer import render_info
 
-PROGRAM_DIR = Path(__file__).parent
+TSP_DIR = Path(__file__).parent
+DEFAULT_SOURCE = "asm"
 
-def load_program(name: str) -> AssembledProgram:
-    """ Load and assemble a .xqasm file from the TSP program directory. """
-    path = PROGRAM_DIR / f"{name}.xqasm"
+def load_program(name: str, source_dir: Path | None = None) -> AssembledProgram:
+    """ Load and assemble a .xqasm file from the given source directory. """
+    program_dir = source_dir or (TSP_DIR / DEFAULT_SOURCE)
+    path = program_dir / f"{name}.xqasm"
     source = path.read_text()
     return assemble(source, name)
-
-def triu_index(i: int, j: int) -> int:
-    """ Upper triangle index for pair (i, j) where i < j. """
-    if i > j:
-        i, j = j, i
-    return j * (j - 1) // 2 + i
 
 def make_distance_vec(distances: list[int]) -> Vec:
     """ Wrap a flat distance list as a Vec for the VM. """
@@ -67,6 +63,7 @@ def run_pipeline(
     distances: list[int],
     verbose: bool = False,
     trace_verbosity: int | None = None,
+    source_dir: Path | None = None,
 ) -> dict[str, Any]:
     """
     Run the full TSP encoder-verifier-decoder pipeline.
@@ -82,7 +79,7 @@ def run_pipeline(
         return Tracer(verbosity=trace_verbosity)
 
     # Encoder
-    encoder = load_program("encoder")
+    encoder = load_program("encoder", source_dir)
     enc, t_enc = run_program(encoder, {0: n, 1: dist_vec}, make_tracer("encoder"))
     model = enc.state.get_output(0)
     assert isinstance(model, XQMX)
@@ -91,13 +88,13 @@ def run_pipeline(
     sample = make_identity_sample(n)
 
     # Verifier
-    verifier = load_program("verifier")
+    verifier = load_program("verifier", source_dir)
     ver, t_ver = run_program(verifier, {0: model, 1: sample, 2: n}, make_tracer("verifier"))
     energy = ver.state.get_output(0)
     valid = ver.state.get_output(1)
 
     # Decoder
-    decoder = load_program("decoder")
+    decoder = load_program("decoder", source_dir)
     dec, t_dec = run_program(decoder, {0: sample, 1: n}, make_tracer("decoder"))
     tour_vec = dec.state.get_output(0)
     assert isinstance(tour_vec, Vec)
@@ -106,7 +103,7 @@ def run_pipeline(
     tour_dist = 0
     for p in range(n):
         ci, cj = tour[p], tour[(p + 1) % n]
-        tour_dist += distances[triu_index(ci, cj)]
+        tour_dist += distances[triu(ci, cj)]
 
     results = {
         "n": n,
@@ -141,14 +138,16 @@ def run_pipeline(
 
     return results
 
-def benchmark(sizes: list[int], seed: int = 42) -> list[dict[str, Any]]:
+def benchmark(
+    sizes: list[int], seed: int = 42, source_dir: Path | None = None,
+) -> list[dict[str, Any]]:
     """ Run the TSP pipeline across multiple problem sizes and collect results. """
     rng = random.Random(seed)
     all_results: list[dict[str, Any]] = []
 
     for n in sizes:
         distances = [rng.randint(1, 100) for _ in range(n * (n - 1) // 2)]
-        results = run_pipeline(n, distances, verbose=True)
+        results = run_pipeline(n, distances, verbose=True, source_dir=source_dir)
         all_results.append(results)
 
     return all_results
@@ -197,16 +196,27 @@ if __name__ == "__main__":
         "--seed", type=int, default=42,
         help="Random seed (default: 42)",
     )
+    parser.add_argument(
+        "--src", type=str, default=DEFAULT_SOURCE,
+        choices=["asm", "cp"],
+        help="Program source directory (default: asm)",
+    )
+    parser.add_argument(
+        "-n", type=int, default=5,
+        help="Problem size for single run (default: 5)",
+    )
     args = parser.parse_args()
 
     if args.bench and args.trace is not None:
         parser.error("--trace cannot be used with --bench")
 
+    source_dir = TSP_DIR / args.src
+
     if args.bench:
-        results = benchmark(args.bench, seed=args.seed)
+        results = benchmark(args.bench, seed=args.seed, source_dir=source_dir)
         print_summary(results)
     else:
         rng = random.Random(args.seed)
-        n = 5
+        n = args.n
         distances = [rng.randint(1, 100) for _ in range(n * (n - 1) // 2)]
-        run_pipeline(n, distances, verbose=True, trace_verbosity=args.trace)
+        run_pipeline(n, distances, verbose=True, trace_verbosity=args.trace, source_dir=source_dir)

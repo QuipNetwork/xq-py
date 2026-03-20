@@ -1,0 +1,101 @@
+# === Inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+
+# === Allocations ===
+LOAD r0
+DUPL
+MUL
+BQMX r3
+LOAD r0
+STOW r2
+LOAD r0
+LOAD r2
+RESIZE r3
+
+# === Objective ===
+PUSH 0
+LOAD r0
+PUSH 1
+SUB
+RANGE
+  LVAL r4
+  LOAD r4
+  PUSH 1
+  ADD
+  LOAD r0
+  LOAD r4
+  PUSH 1
+  ADD
+  SUB
+  RANGE
+    LVAL r5
+    LOAD r4
+    LOAD r5
+    IDXTRIU
+    VECGET r1
+    STOW r6
+    PUSH 0
+    LOAD r0
+    RANGE
+      LVAL r7
+      LOAD r4
+      LOAD r2
+      MUL
+      LOAD r7
+      ADD
+      LOAD r5
+      LOAD r2
+      MUL
+      LOAD r7
+      PUSH 1
+      ADD
+      LOAD r0
+      MOD
+      ADD
+      LOAD r6
+      ADDQUAD r3
+      LOAD r5
+      LOAD r2
+      MUL
+      LOAD r7
+      ADD
+      LOAD r4
+      LOAD r2
+      MUL
+      LOAD r7
+      PUSH 1
+      ADD
+      LOAD r0
+      MOD
+      ADD
+      LOAD r6
+      ADDQUAD r3
+    NEXT
+  NEXT
+NEXT
+
+# === Constraints ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r8
+  LOAD r8
+  PUSH 0x64
+  ONEHOTR r3
+NEXT
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r9
+  LOAD r9
+  PUSH 0x64
+  ONEHOTC r3
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r3
+HALT

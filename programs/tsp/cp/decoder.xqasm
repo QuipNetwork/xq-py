@@ -1,0 +1,22 @@
+# === Inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+
+# === Decode tour ===
+VECI r2
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10
+  LOAD r10
+  PUSH 1
+  COLFIND r0
+  VECPUSH r2
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r2
+HALT

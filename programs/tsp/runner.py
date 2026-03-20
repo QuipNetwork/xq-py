@@ -5,10 +5,12 @@ Benchmarks XQVM performance across multiple problem sizes using
 random distance matrices with upper-triangle (triu) indexing.
 """
 
+from __future__ import annotations
+
 import random
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from xqvm.assembler import assemble, AssembledProgram
 from xqvm.core.executor import Executor
@@ -17,6 +19,9 @@ from xqvm.core.xqmx import XQMX, triu
 
 from tools.tracer import Tracer
 from tools.visualizer import render_info
+
+if TYPE_CHECKING:
+    from xqsa import Backend
 
 TSP_DIR = Path(__file__).parent
 DEFAULT_SOURCE = "asm"
@@ -64,6 +69,7 @@ def run_pipeline(
     verbose: bool = False,
     trace_verbosity: int | None = None,
     source_dir: Path | None = None,
+    solver: Backend | None = None,
 ) -> dict[str, Any]:
     """
     Run the full TSP encoder-verifier-decoder pipeline.
@@ -84,8 +90,14 @@ def run_pipeline(
     model = enc.state.get_output(0)
     assert isinstance(model, XQMX)
 
-    # Build known-good sample (identity tour)
-    sample = make_identity_sample(n)
+    # Solver
+    t_solve = 0.0
+    if solver is not None:
+        solve_result = solver.solve(model)
+        sample = solve_result.sample
+        t_solve = solve_result.timing
+    else:
+        sample = make_identity_sample(n)
 
     # Verifier
     verifier = load_program("verifier", source_dir)
@@ -105,9 +117,10 @@ def run_pipeline(
         ci, cj = tour[p], tour[(p + 1) % n]
         tour_dist += distances[triu(ci, cj)]
 
-    results = {
+    results: dict[str, Any] = {
         "n": n,
         "encoder_time": t_enc,
+        "solve_time": t_solve,
         "verifier_time": t_ver,
         "decoder_time": t_dec,
         "total_time": t_enc + t_ver + t_dec,
@@ -132,14 +145,17 @@ def run_pipeline(
         print(f"Tour distance:  {tour_dist}")
         print(f"\n--- Timings ---")
         print(f"Encoder:  {t_enc:.6f}s")
+        if solver is not None:
+            print(f"Solver:   {t_solve:.6f}s")
         print(f"Verifier: {t_ver:.6f}s")
         print(f"Decoder:  {t_dec:.6f}s")
-        print(f"Total:    {t_enc + t_ver + t_dec:.6f}s")
+        print(f"Total:    {results['total_time']:.6f}s")
 
     return results
 
 def benchmark(
     sizes: list[int], seed: int = 42, source_dir: Path | None = None,
+    solver: Backend | None = None,
 ) -> list[dict[str, Any]]:
     """ Run the TSP pipeline across multiple problem sizes and collect results. """
     rng = random.Random(seed)
@@ -147,7 +163,7 @@ def benchmark(
 
     for n in sizes:
         distances = [rng.randint(1, 100) for _ in range(n * (n - 1) // 2)]
-        results = run_pipeline(n, distances, verbose=True, source_dir=source_dir)
+        results = run_pipeline(n, distances, verbose=True, source_dir=source_dir, solver=solver)
         all_results.append(results)
 
     return all_results
@@ -205,6 +221,10 @@ if __name__ == "__main__":
         "-n", type=int, default=5,
         help="Problem size for single run (default: 5)",
     )
+    parser.add_argument(
+        "--no-solve", action="store_true",
+        help="Disable solver and use a hardcoded sample instead",
+    )
     args = parser.parse_args()
 
     if args.bench and args.trace is not None:
@@ -212,11 +232,16 @@ if __name__ == "__main__":
 
     source_dir = TSP_DIR / args.src
 
+    sa_solver = None
+    if not args.no_solve:
+        from xqsa import NealBackend
+        sa_solver = NealBackend(seed=args.seed)
+
     if args.bench:
-        results = benchmark(args.bench, seed=args.seed, source_dir=source_dir)
+        results = benchmark(args.bench, seed=args.seed, source_dir=source_dir, solver=sa_solver)
         print_summary(results)
     else:
         rng = random.Random(args.seed)
         n = args.n
         distances = [rng.randint(1, 100) for _ in range(n * (n - 1) // 2)]
-        run_pipeline(n, distances, verbose=True, trace_verbosity=args.trace, source_dir=source_dir)
+        run_pipeline(n, distances, verbose=True, trace_verbosity=args.trace, source_dir=source_dir, solver=sa_solver)

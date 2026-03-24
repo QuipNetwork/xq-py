@@ -17,7 +17,7 @@ RANGE
   LVAL r10
   LOAD r10
   GETLINE r1
-  DUPL
+  COPY
   PUSH 0
   EQ
   SWAP

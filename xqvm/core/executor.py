@@ -95,9 +95,16 @@ class Executor:
             Opcode.NEXT: self._runner_NEXT,
             Opcode.LVAL: self._runner_LVAL,
             # Stack & Register I/O
-            Opcode.PUSH: self._runner_PUSH,
+            Opcode.PUSH1: self._runner_PUSH,
+            Opcode.PUSH2: self._runner_PUSH,
+            Opcode.PUSH3: self._runner_PUSH,
+            Opcode.PUSH4: self._runner_PUSH,
+            Opcode.PUSH5: self._runner_PUSH,
+            Opcode.PUSH6: self._runner_PUSH,
+            Opcode.PUSH7: self._runner_PUSH,
+            Opcode.PUSH8: self._runner_PUSH,
             Opcode.POP: self._runner_POP,
-            Opcode.DUPL: self._runner_DUPL,
+            Opcode.COPY: self._runner_COPY,
             Opcode.SWAP: self._runner_SWAP,
             Opcode.SCLR: self._runner_SCLR,
             Opcode.LOAD: self._runner_LOAD,
@@ -105,15 +112,6 @@ class Executor:
             Opcode.DROP: self._runner_DROP,
             Opcode.INPUT: self._runner_INPUT,
             Opcode.OUTPUT: self._runner_OUTPUT,
-            # Load Constant
-            Opcode.LDC1: self._runner_LDC,
-            Opcode.LDC2: self._runner_LDC,
-            Opcode.LDC3: self._runner_LDC,
-            Opcode.LDC4: self._runner_LDC,
-            Opcode.LDC5: self._runner_LDC,
-            Opcode.LDC6: self._runner_LDC,
-            Opcode.LDC7: self._runner_LDC,
-            Opcode.LDC8: self._runner_LDC,
             # Arithmetic
             Opcode.ADD: self._runner_ADD,
             Opcode.SUB: self._runner_SUB,
@@ -359,16 +357,16 @@ class Executor:
         self.state.set_register(reg, value)
 
     def _runner_PUSH(self, instr: Instruction) -> None:
-        """ PUSH: Push immediate value onto stack. """
-        value = instr.operands[0]
+        """ PUSH1-8: Push N-byte constant (big-endian signed two's complement). """
+        value = int.from_bytes(bytes(instr.operands), byteorder="big", signed=True)
         self.state.push(value)
 
     def _runner_POP(self, instr: Instruction) -> None:
         """ POP: Pop and discard top of stack. """
         self.state.pop()
 
-    def _runner_DUPL(self, instr: Instruction) -> None:
-        """ DUPL: Duplicate top of stack. """
+    def _runner_COPY(self, instr: Instruction) -> None:
+        """ COPY: Duplicate top of stack. """
         value = self.state.peek()
         self.state.push(value)
 
@@ -412,11 +410,6 @@ class Executor:
         slot = self.state.pop()
         value = self.state.get_register(reg)
         self.state.set_output(slot, value)
-
-    def _runner_LDC(self, instr: Instruction) -> None:
-        """ LDC1-8: Load N-byte constant (big-endian signed two's complement). """
-        value = int.from_bytes(bytes(instr.operands), byteorder="big", signed=True)
-        self.state.push(value)
 
     def _runner_ADD(self, instr: Instruction) -> None:
         """ ADD: push(pop() + pop()). """

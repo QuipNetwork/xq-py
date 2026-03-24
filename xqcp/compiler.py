@@ -340,7 +340,7 @@ def _emit_verifier_binary_check(
     lines.append(f"  LVAL r{loop_reg}")
     lines.append(f"  LOAD r{loop_reg}")
     lines.append(f"  GETLINE r{sample_reg}")
-    lines.append(f"  DUPL")
+    lines.append(f"  COPY")
     lines.append(f"  PUSH 0")
     lines.append(f"  EQ")
     lines.append(f"  SWAP")

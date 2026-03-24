@@ -80,7 +80,7 @@ Programs execute independently with no shared state. Communication occurs only t
 
 ---
 
-## Instruction Set (85 opcodes)
+## Instruction Set (84 opcodes)
 
 ### Control Flow
 
@@ -106,30 +106,24 @@ Programs execute independently with no shared state. Communication occurs only t
 | 0x0E | `INPUT` | `<reg>` | pop slot → reg[n] | Load calldata slot into register |
 | 0x0F | `OUTPUT` | `<reg>` | pop slot | Write register to output slot |
 
-### Load Constant
-
-| Code | Opcode | Operands | Stack | Description |
-| ------ | -------- | ---------- | ------- | ------------- |
-| 0x11 | `LDC1` | 1 × `<int>` | → push value | Load 1-byte constant |
-| 0x12 | `LDC2` | 2 × `<int>` | → push value | Load 2-byte constant |
-| 0x13 | `LDC3` | 3 × `<int>` | → push value | Load 3-byte constant |
-| 0x14 | `LDC4` | 4 × `<int>` | → push value | Load 4-byte constant |
-| 0x15 | `LDC5` | 5 × `<int>` | → push value | Load 5-byte constant |
-| 0x16 | `LDC6` | 6 × `<int>` | → push value | Load 6-byte constant |
-| 0x17 | `LDC7` | 7 × `<int>` | → push value | Load 7-byte constant |
-| 0x18 | `LDC8` | 8 × `<int>` | → push value | Load 8-byte constant |
-
-Operand bytes are concatenated in big-endian order (most significant byte first) and interpreted as a signed two's complement integer. For example, `LDC2 0xFF 0xFE` pushes −2.
-
 ### Stack Manipulation
 
 | Code | Opcode | Operands | Stack | Description |
 | ------ | -------- | ---------- | ------- | ------------- |
-| 0x1A | `PUSH` | `<int>` | → push value | Push literal onto stack |
-| 0x1B | `POP` | — | pop | Discard top of stack |
-| 0x1C | `SWAP` | — | pop b, a → push a, b | Swap top two elements |
-| 0x1D | `DUPL` | — | peek → push copy | Duplicate top of stack |
-| 0x1E | `SCLR` | — | clear all | Empty entire stack |
+| 0x10 | `POP` | — | pop | Discard top of stack |
+| 0x11 | `PUSH1` | 1 × `<int>` | → push value | Push 1-byte integer to stack |
+| 0x12 | `PUSH2` | 2 × `<int>` | → push value | Push 2-byte integer to stack |
+| 0x13 | `PUSH3` | 3 × `<int>` | → push value | Push 3-byte integer to stack |
+| 0x14 | `PUSH4` | 4 × `<int>` | → push value | Push 4-byte integer to stack |
+| 0x15 | `PUSH5` | 5 × `<int>` | → push value | Push 5-byte integer to stack |
+| 0x16 | `PUSH6` | 6 × `<int>` | → push value | Push 6-byte integer to stack |
+| 0x17 | `PUSH7` | 7 × `<int>` | → push value | Push 7-byte integer to stack |
+| 0x18 | `PUSH8` | 8 × `<int>` | → push value | Push 8-byte integer to stack |
+| 0x1A | `SCLR` | — | clear all | Empty entire stack |
+| 0x1B | `SWAP` | — | pop b, a → push a, b | Swap top two elements |
+| 0x1C | `COPY` | — | peek → push copy | Duplicate top of stack |
+
+Operand bytes are concatenated in big-endian order (most significant byte first) and interpreted as a signed two's complement integer. For example, `PUSH2 0xFF 0xFE` pushes −2.
 
 ### Arithmetic
 
@@ -262,15 +256,15 @@ TARGET .0
 HALT
 ```
 
-### `LDC` Sugar
+### `PUSH` Sugar
 
-The assembler accepts `LDC <value>` as syntactic sugar for the `LDC1`–`LDC8` family. The assembler parses the signed integer, selects the smallest `LDCn` opcode that fits, and encodes the value as big-endian signed two's complement byte operands. The desugared forms (`LDC1 0xFF`, `LDC2 0x01 0x00`, etc.) remain valid.
+The assembler accepts `PUSH <value>` as syntactic sugar for the `PUSH1`–`PUSH8` family. The assembler parses the signed integer, selects the smallest `PUSHn` opcode that fits, and encodes the value as big-endian signed two's complement byte operands. The desugared forms (`PUSH1 0xFF`, `PUSH2 0x01 0x00`, etc.) remain valid.
 
 ```assembly
-LDC 42            # → LDC1 42
-LDC -1            # → LDC1 0xFF
-LDC 256           # → LDC2 0x01 0x00
-LDC 2147483647    # → LDC4 0x7F 0xFF 0xFF 0xFF
+PUSH 42            # → PUSH1 42
+PUSH -1            # → PUSH1 0xFF
+PUSH 256           # → PUSH2 0x01 0x00
+PUSH 2147483647    # → PUSH4 0x7F 0xFF 0xFF 0xFF
 ```
 
 ---

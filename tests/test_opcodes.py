@@ -10,8 +10,8 @@ class TestOpcodeCount:
     """Tests for opcode count and completeness."""
 
     def test_total_opcode_count(self):
-        """Should have exactly 85 opcodes."""
-        assert len(Opcode) == 85
+        """Should have exactly 84 opcodes."""
+        assert len(Opcode) == 84
 
     def test_all_opcodes_have_metadata(self):
         """Every opcode must have valid metadata."""
@@ -29,7 +29,7 @@ class TestOpcodeCodeLookup:
         """from_code returns correct opcode for valid codes."""
         assert Opcode.from_code(0x00) == Opcode.NOP
         assert Opcode.from_code(0x09) == Opcode.HALT
-        assert Opcode.from_code(0x1A) == Opcode.PUSH
+        assert Opcode.from_code(0x11) == Opcode.PUSH1
         assert Opcode.from_code(0x20) == Opcode.ADD
 
     def test_from_code_invalid(self):
@@ -51,13 +51,13 @@ class TestOpcodeNameLookup:
         """from_name finds exact name match."""
         assert Opcode.from_name("NOP") == Opcode.NOP
         assert Opcode.from_name("HALT") == Opcode.HALT
-        assert Opcode.from_name("PUSH") == Opcode.PUSH
+        assert Opcode.from_name("PUSH1") == Opcode.PUSH1
 
     def test_from_name_case_insensitive(self):
         """from_name is case-insensitive."""
         assert Opcode.from_name("nop") == Opcode.NOP
         assert Opcode.from_name("Halt") == Opcode.HALT
-        assert Opcode.from_name("pUsH") == Opcode.PUSH
+        assert Opcode.from_name("pUsH1") == Opcode.PUSH1
 
     def test_from_name_invalid(self):
         """from_name returns None for invalid names."""
@@ -126,12 +126,11 @@ class TestOpcodeGroupRanges:
 
     def test_stack_manip_range(self):
         """Stack manipulation opcodes in 0x11-0x1E range."""
-        stack_ops = [Opcode.LDC1, Opcode.LDC2, Opcode.LDC3, Opcode.LDC4,
-                     Opcode.LDC5, Opcode.LDC6, Opcode.LDC7, Opcode.LDC8,
-                     Opcode.PUSH, Opcode.POP, Opcode.SWAP, Opcode.DUPL,
-                     Opcode.SCLR]
+        stack_ops = [Opcode.PUSH1, Opcode.PUSH2, Opcode.PUSH3, Opcode.PUSH4,
+                     Opcode.PUSH5, Opcode.PUSH6, Opcode.PUSH7, Opcode.PUSH8,
+                     Opcode.POP, Opcode.SCLR, Opcode.SWAP, Opcode.COPY]
         for op in stack_ops:
-            assert 0x11 <= op.code <= 0x1E, f"{op.name} not in stack range"
+            assert 0x10 <= op.code <= 0x1C, f"{op.name} not in stack range"
 
     def test_arithmetic_range(self):
         """Arithmetic opcodes in 0x20-0x2F range."""
@@ -187,7 +186,7 @@ class TestSpecificOpcodeMetadata:
 
     def test_push_metadata(self):
         """PUSH takes immediate and pushes one value."""
-        meta = Opcode.PUSH.meta
+        meta = Opcode.PUSH1.meta
         assert meta.stack_pop == 0
         assert meta.stack_push == 1
         assert meta.operand_count == 1

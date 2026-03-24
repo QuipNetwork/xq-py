@@ -39,7 +39,7 @@ RANGE
   LVAL r10
   LOAD r10
   GETLINE r1          # push sample[i]
-  DUPL
+  COPY
   PUSH 0
   EQ                  # is 0?
   SWAP

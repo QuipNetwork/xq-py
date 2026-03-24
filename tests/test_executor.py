@@ -1,5 +1,5 @@
 """
-Tests for Executor and all 85 opcode handlers.
+Tests for Executor and all 84 opcode handlers.
 """
 
 import pytest
@@ -37,9 +37,9 @@ class TestControlFlow:
     def test_halt(self):
         """HALT stops execution."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.HALT),
-            Instruction(Opcode.PUSH, (2,)),  # Never reached
+            Instruction(Opcode.PUSH1, (2,)),  # Never reached
         ])
         assert ex.state.stack_depth == 1
         assert ex.state.peek(0) == 1
@@ -48,15 +48,15 @@ class TestControlFlow:
         """TARGET defines label, JUMP jumps back to it."""
         # Define target first, then jump back to it
         ex = run_program([
-            Instruction(Opcode.PUSH, (0,)),     # Counter
+            Instruction(Opcode.PUSH1, (0,)),     # Counter
             Instruction(Opcode.STOW, (0,)),
             Instruction(Opcode.TARGET, (0,)),   # Target 0 - loop start
             Instruction(Opcode.LOAD, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.ADD),
-            Instruction(Opcode.DUPL),
+            Instruction(Opcode.COPY),
             Instruction(Opcode.STOW, (0,)),     # counter++
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.LT),            # counter < 3?
             Instruction(Opcode.JUMPI, (0,)),    # Jump back to target 0
             Instruction(Opcode.HALT),
@@ -67,10 +67,10 @@ class TestControlFlow:
     def test_forward_jump(self):
         """JUMP to a TARGET defined later in the program."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.STOW, (0,)),
             Instruction(Opcode.JUMP, (0,)),        # Forward jump to target 0
-            Instruction(Opcode.PUSH, (99,)),        # Skipped
+            Instruction(Opcode.PUSH1, (99,)),        # Skipped
             Instruction(Opcode.STOW, (0,)),         # Skipped
             Instruction(Opcode.TARGET, (0,)),       # Target 0 defined after jump
             Instruction(Opcode.HALT),
@@ -80,9 +80,9 @@ class TestControlFlow:
     def test_forward_jumpi(self):
         """JUMPI forward to a TARGET defined later (break-out-of-loop pattern)."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (1,)),         # Non-zero condition
+            Instruction(Opcode.PUSH1, (1,)),         # Non-zero condition
             Instruction(Opcode.JUMPI, (0,)),         # Forward jump
-            Instruction(Opcode.PUSH, (99,)),         # Skipped
+            Instruction(Opcode.PUSH1, (99,)),         # Skipped
             Instruction(Opcode.STOW, (0,)),          # Skipped
             Instruction(Opcode.TARGET, (0,)),
             Instruction(Opcode.HALT),
@@ -94,9 +94,9 @@ class TestControlFlow:
         # Define target first, then conditionally jump to it
         ex = run_program([
             Instruction(Opcode.TARGET, (0,)),   # Define target 0 here
-            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.STOW, (0,)),
-            Instruction(Opcode.PUSH, (1,)),     # Non-zero condition
+            Instruction(Opcode.PUSH1, (1,)),     # Non-zero condition
             Instruction(Opcode.NOT),           # Invert to 0, so we don't jump
             Instruction(Opcode.JUMPI, (0,)),    # Won't jump (0)
             Instruction(Opcode.HALT),
@@ -106,10 +106,10 @@ class TestControlFlow:
     def test_jumpi_not_taken(self):
         """JUMPI doesn't jump when top of stack is zero."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (99,)),
+            Instruction(Opcode.PUSH1, (99,)),
             Instruction(Opcode.STOW, (0,)),
             Instruction(Opcode.TARGET, (0,)),   # Define target first
-            Instruction(Opcode.PUSH, (0,)),     # Zero condition
+            Instruction(Opcode.PUSH1, (0,)),     # Zero condition
             Instruction(Opcode.JUMPI, (0,)),    # Should not jump (0)
             Instruction(Opcode.HALT),
         ])
@@ -119,10 +119,10 @@ class TestControlFlow:
         """RANGE creates loop with values [start, start+count)."""
         # Sum 0+1+2+3+4 = 10
         ex = run_program([
-            Instruction(Opcode.PUSH, (0,)),     # Sum accumulator
+            Instruction(Opcode.PUSH1, (0,)),     # Sum accumulator
             Instruction(Opcode.STOW, (0,)),
-            Instruction(Opcode.PUSH, (0,)),     # Start
-            Instruction(Opcode.PUSH, (5,)),     # Count
+            Instruction(Opcode.PUSH1, (0,)),     # Start
+            Instruction(Opcode.PUSH1, (5,)),     # Count
             Instruction(Opcode.RANGE),
             Instruction(Opcode.TARGET, (0,)),   # Loop body
             Instruction(Opcode.LVAL, (1,)),     # i -> r1
@@ -140,18 +140,18 @@ class TestControlFlow:
         ex = run_program([
             # Create vec [10, 20, 30]
             Instruction(Opcode.VECI, (0,)),
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.VECPUSH, (0,)),
-            Instruction(Opcode.PUSH, (20,)),
+            Instruction(Opcode.PUSH1, (20,)),
             Instruction(Opcode.VECPUSH, (0,)),
-            Instruction(Opcode.PUSH, (30,)),
+            Instruction(Opcode.PUSH1, (30,)),
             Instruction(Opcode.VECPUSH, (0,)),
             # Sum accumulator
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.STOW, (1,)),
             # Iterate: start=0, end=3
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.ITER, (0,)),
             Instruction(Opcode.TARGET, (0,)),
             Instruction(Opcode.LVAL, (2,)),     # val -> r2
@@ -167,8 +167,8 @@ class TestControlFlow:
     def test_lval(self):
         """LVAL copies current loop value to register."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),     # Start
-            Instruction(Opcode.PUSH, (1,)),     # Count
+            Instruction(Opcode.PUSH1, (5,)),     # Start
+            Instruction(Opcode.PUSH1, (1,)),     # Count
             Instruction(Opcode.RANGE),
             Instruction(Opcode.TARGET, (0,)),
             Instruction(Opcode.LVAL, (0,)),     # Store loop value in r0
@@ -183,7 +183,7 @@ class TestStackRegisterIO:
     def test_push(self):
         """PUSH puts immediate value on stack."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == 42
@@ -191,19 +191,19 @@ class TestStackRegisterIO:
     def test_pop(self):
         """POP removes top of stack."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (2,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (2,)),
             Instruction(Opcode.POP),
             Instruction(Opcode.HALT),
         ])
         assert ex.state.stack_depth == 1
         assert ex.state.peek(0) == 1
 
-    def test_dupl(self):
-        """DUPL duplicates top of stack."""
+    def test_copy(self):
+        """COPY duplicates top of stack."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (42,)),
-            Instruction(Opcode.DUPL),
+            Instruction(Opcode.PUSH1, (42,)),
+            Instruction(Opcode.COPY),
             Instruction(Opcode.HALT),
         ])
         assert ex.state.stack_depth == 2
@@ -213,8 +213,8 @@ class TestStackRegisterIO:
     def test_swap(self):
         """SWAP exchanges top two stack values."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (2,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (2,)),
             Instruction(Opcode.SWAP),
             Instruction(Opcode.HALT),
         ])
@@ -224,9 +224,9 @@ class TestStackRegisterIO:
     def test_sclr(self):
         """SCLR clears entire stack."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (2,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (2,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.SCLR),
             Instruction(Opcode.HALT),
         ])
@@ -243,7 +243,7 @@ class TestStackRegisterIO:
     def test_load(self):
         """LOAD pushes register value onto stack."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (100,)),
+            Instruction(Opcode.PUSH1, (100,)),
             Instruction(Opcode.STOW, (5,)),
             Instruction(Opcode.LOAD, (5,)),
             Instruction(Opcode.HALT),
@@ -253,7 +253,7 @@ class TestStackRegisterIO:
     def test_stow(self):
         """STOW stores stack top in register."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.STOW, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -263,7 +263,7 @@ class TestStackRegisterIO:
     def test_input(self):
         """INPUT loads input slot to register."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (0,)),     # slot index on stack
+            Instruction(Opcode.PUSH1, (0,)),     # slot index on stack
             Instruction(Opcode.INPUT, (0,)),    # input[0] -> r0
             Instruction(Opcode.HALT),
         ], input_data={0: 42})
@@ -272,9 +272,9 @@ class TestStackRegisterIO:
     def test_output(self):
         """OUTPUT writes register to output slot."""
         prog = make_program([
-            Instruction(Opcode.PUSH, (99,)),
+            Instruction(Opcode.PUSH1, (99,)),
             Instruction(Opcode.STOW, (0,)),
-            Instruction(Opcode.PUSH, (0,)),     # slot index on stack
+            Instruction(Opcode.PUSH1, (0,)),     # slot index on stack
             Instruction(Opcode.OUTPUT, (0,)),   # r0 -> output[0]
             Instruction(Opcode.HALT),
         ])
@@ -285,7 +285,7 @@ class TestStackRegisterIO:
     def test_drop_int_register(self):
         """DROP clears an int register."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.STOW, (0,)),
             Instruction(Opcode.DROP, (0,)),
             Instruction(Opcode.HALT),
@@ -312,7 +312,7 @@ class TestStackRegisterIO:
     def test_drop_then_load_raises(self):
         """LOAD after DROP raises RegisterNotFound."""
         prog = make_program([
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.STOW, (0,)),
             Instruction(Opcode.DROP, (0,)),
             Instruction(Opcode.LOAD, (0,)),
@@ -321,93 +321,93 @@ class TestStackRegisterIO:
         with pytest.raises(RegisterNotFound):
             Executor().execute(prog)
 
-class TestLoadConstant:
-    """Tests for LDC1-LDC8 load constant opcodes."""
+class TestPushConstant:
+    """Tests for PUSH1-PUSH8 push constant opcodes."""
 
     def test_ldc1_positive(self):
-        """LDC1 loads 1-byte positive constant."""
+        """PUSH1 loads 1-byte positive constant."""
         ex = run_program([
-            Instruction(Opcode.LDC1, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == 42
 
     def test_ldc1_negative(self):
-        """LDC1 loads 1-byte negative constant (two's complement)."""
+        """PUSH1 loads 1-byte negative constant (two's complement)."""
         ex = run_program([
-            Instruction(Opcode.LDC1, (0xFF,)),  # -1
+            Instruction(Opcode.PUSH1, (0xFF,)),  # -1
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == -1
 
     def test_ldc1_zero(self):
-        """LDC1 loads zero."""
+        """PUSH1 loads zero."""
         ex = run_program([
-            Instruction(Opcode.LDC1, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == 0
 
     def test_ldc2(self):
-        """LDC2 loads 2-byte constant."""
+        """PUSH2 loads 2-byte constant."""
         ex = run_program([
-            Instruction(Opcode.LDC2, (0x01, 0x00)),  # 256
+            Instruction(Opcode.PUSH2, (0x01, 0x00)),  # 256
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == 256
 
     def test_ldc2_negative(self):
-        """LDC2 loads 2-byte negative constant."""
+        """PUSH2 loads 2-byte negative constant."""
         ex = run_program([
-            Instruction(Opcode.LDC2, (0xFF, 0xFE)),  # -2
+            Instruction(Opcode.PUSH2, (0xFF, 0xFE)),  # -2
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == -2
 
     def test_ldc3(self):
-        """LDC3 loads 3-byte constant."""
+        """PUSH3 loads 3-byte constant."""
         ex = run_program([
-            Instruction(Opcode.LDC3, (0x01, 0x00, 0x00)),  # 65536
+            Instruction(Opcode.PUSH3, (0x01, 0x00, 0x00)),  # 65536
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == 65536
 
     def test_ldc4(self):
-        """LDC4 loads 4-byte constant."""
+        """PUSH4 loads 4-byte constant."""
         ex = run_program([
-            Instruction(Opcode.LDC4, (0x00, 0x01, 0x00, 0x00)),  # 65536
+            Instruction(Opcode.PUSH4, (0x00, 0x01, 0x00, 0x00)),  # 65536
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == 65536
 
     def test_ldc4_max_positive(self):
-        """LDC4 loads max positive 4-byte value."""
+        """PUSH4 loads max positive 4-byte value."""
         ex = run_program([
-            Instruction(Opcode.LDC4, (0x7F, 0xFF, 0xFF, 0xFF)),  # 2^31 - 1
+            Instruction(Opcode.PUSH4, (0x7F, 0xFF, 0xFF, 0xFF)),  # 2^31 - 1
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == 2147483647
 
     def test_ldc4_min_negative(self):
-        """LDC4 loads min negative 4-byte value."""
+        """PUSH4 loads min negative 4-byte value."""
         ex = run_program([
-            Instruction(Opcode.LDC4, (0x80, 0x00, 0x00, 0x00)),  # -2^31
+            Instruction(Opcode.PUSH4, (0x80, 0x00, 0x00, 0x00)),  # -2^31
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == -2147483648
 
     def test_ldc8(self):
-        """LDC8 loads 8-byte constant."""
+        """PUSH8 loads 8-byte constant."""
         ex = run_program([
-            Instruction(Opcode.LDC8, (0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00)),  # 256
+            Instruction(Opcode.PUSH8, (0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00)),  # 256
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == 256
 
     def test_ldc8_large_negative(self):
-        """LDC8 loads large negative value."""
+        """PUSH8 loads large negative value."""
         ex = run_program([
-            Instruction(Opcode.LDC8, (0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF)),  # -1
+            Instruction(Opcode.PUSH8, (0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF)),  # -1
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == -1
@@ -418,8 +418,8 @@ class TestArithmetic:
     def test_add(self):
         """ADD sums top two values."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (10,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.ADD),
             Instruction(Opcode.HALT),
         ])
@@ -428,8 +428,8 @@ class TestArithmetic:
     def test_sub(self):
         """SUB subtracts (second - top)."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (10,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.SUB),
             Instruction(Opcode.HALT),
         ])
@@ -438,8 +438,8 @@ class TestArithmetic:
     def test_mul(self):
         """MUL multiplies top two values."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (6,)),
-            Instruction(Opcode.PUSH, (7,)),
+            Instruction(Opcode.PUSH1, (6,)),
+            Instruction(Opcode.PUSH1, (7,)),
             Instruction(Opcode.MUL),
             Instruction(Opcode.HALT),
         ])
@@ -448,8 +448,8 @@ class TestArithmetic:
     def test_div(self):
         """DIV performs integer division."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (20,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (20,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.DIV),
             Instruction(Opcode.HALT),
         ])
@@ -458,8 +458,8 @@ class TestArithmetic:
     def test_div_by_zero(self):
         """DIV by zero raises DivisionByZero."""
         prog = make_program([
-            Instruction(Opcode.PUSH, (10,)),
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (10,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.DIV),
             Instruction(Opcode.HALT),
         ])
@@ -469,8 +469,8 @@ class TestArithmetic:
     def test_mod(self):
         """MOD computes remainder."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (17,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (17,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.MOD),
             Instruction(Opcode.HALT),
         ])
@@ -479,8 +479,8 @@ class TestArithmetic:
     def test_mod_by_zero(self):
         """MOD by zero raises DivisionByZero."""
         prog = make_program([
-            Instruction(Opcode.PUSH, (10,)),
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (10,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.MOD),
             Instruction(Opcode.HALT),
         ])
@@ -490,7 +490,7 @@ class TestArithmetic:
     def test_neg(self):
         """NEG negates top value."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.NEG),
             Instruction(Opcode.HALT),
         ])
@@ -499,7 +499,7 @@ class TestArithmetic:
     def test_neg_negative(self):
         """NEG on negative produces positive."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (-10,)),
+            Instruction(Opcode.PUSH1, (246,)),
             Instruction(Opcode.NEG),
             Instruction(Opcode.HALT),
         ])
@@ -508,7 +508,7 @@ class TestArithmetic:
     def test_sqr(self):
         """SQR squares top value."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (7,)),
+            Instruction(Opcode.PUSH1, (7,)),
             Instruction(Opcode.SQR),
             Instruction(Opcode.HALT),
         ])
@@ -517,7 +517,7 @@ class TestArithmetic:
     def test_sqr_negative(self):
         """SQR of negative is positive."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (-3,)),
+            Instruction(Opcode.PUSH1, (253,)),
             Instruction(Opcode.SQR),
             Instruction(Opcode.HALT),
         ])
@@ -526,7 +526,7 @@ class TestArithmetic:
     def test_sqr_zero(self):
         """SQR of zero is zero."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.SQR),
             Instruction(Opcode.HALT),
         ])
@@ -535,7 +535,7 @@ class TestArithmetic:
     def test_abs_positive(self):
         """ABS of positive is unchanged."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.ABS),
             Instruction(Opcode.HALT),
         ])
@@ -544,7 +544,7 @@ class TestArithmetic:
     def test_abs_negative(self):
         """ABS of negative is positive."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (-5,)),
+            Instruction(Opcode.PUSH1, (251,)),
             Instruction(Opcode.ABS),
             Instruction(Opcode.HALT),
         ])
@@ -553,7 +553,7 @@ class TestArithmetic:
     def test_abs_zero(self):
         """ABS of zero is zero."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.ABS),
             Instruction(Opcode.HALT),
         ])
@@ -562,8 +562,8 @@ class TestArithmetic:
     def test_min(self):
         """MIN pushes the smaller of two values."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (10,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.MIN),
             Instruction(Opcode.HALT),
         ])
@@ -572,8 +572,8 @@ class TestArithmetic:
     def test_min_equal(self):
         """MIN with equal values returns that value."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.MIN),
             Instruction(Opcode.HALT),
         ])
@@ -582,8 +582,8 @@ class TestArithmetic:
     def test_min_negative(self):
         """MIN with negative values."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (-1,)),
-            Instruction(Opcode.PUSH, (-5,)),
+            Instruction(Opcode.PUSH1, (255,)),
+            Instruction(Opcode.PUSH1, (251,)),
             Instruction(Opcode.MIN),
             Instruction(Opcode.HALT),
         ])
@@ -592,8 +592,8 @@ class TestArithmetic:
     def test_max(self):
         """MAX pushes the larger of two values."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (10,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.MAX),
             Instruction(Opcode.HALT),
         ])
@@ -602,8 +602,8 @@ class TestArithmetic:
     def test_max_negative(self):
         """MAX with negative values."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (-1,)),
-            Instruction(Opcode.PUSH, (-5,)),
+            Instruction(Opcode.PUSH1, (255,)),
+            Instruction(Opcode.PUSH1, (251,)),
             Instruction(Opcode.MAX),
             Instruction(Opcode.HALT),
         ])
@@ -612,7 +612,7 @@ class TestArithmetic:
     def test_inc(self):
         """INC increments top value."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (41,)),
+            Instruction(Opcode.PUSH1, (41,)),
             Instruction(Opcode.INC),
             Instruction(Opcode.HALT),
         ])
@@ -621,7 +621,7 @@ class TestArithmetic:
     def test_inc_negative(self):
         """INC on -1 produces 0."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (-1,)),
+            Instruction(Opcode.PUSH1, (255,)),
             Instruction(Opcode.INC),
             Instruction(Opcode.HALT),
         ])
@@ -630,7 +630,7 @@ class TestArithmetic:
     def test_dec(self):
         """DEC decrements top value."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (43,)),
+            Instruction(Opcode.PUSH1, (43,)),
             Instruction(Opcode.DEC),
             Instruction(Opcode.HALT),
         ])
@@ -639,7 +639,7 @@ class TestArithmetic:
     def test_dec_zero(self):
         """DEC on 0 produces -1."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.DEC),
             Instruction(Opcode.HALT),
         ])
@@ -651,8 +651,8 @@ class TestComparison:
     def test_eq_true(self):
         """EQ returns 1 when equal."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.EQ),
             Instruction(Opcode.HALT),
         ])
@@ -661,8 +661,8 @@ class TestComparison:
     def test_eq_false(self):
         """EQ returns 0 when not equal."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.EQ),
             Instruction(Opcode.HALT),
         ])
@@ -671,8 +671,8 @@ class TestComparison:
     def test_lt_true(self):
         """LT returns 1 when second < top."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (3,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (3,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.LT),
             Instruction(Opcode.HALT),
         ])
@@ -681,8 +681,8 @@ class TestComparison:
     def test_lt_false(self):
         """LT returns 0 when second >= top."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.LT),
             Instruction(Opcode.HALT),
         ])
@@ -691,8 +691,8 @@ class TestComparison:
     def test_gt_true(self):
         """GT returns 1 when second > top."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.GT),
             Instruction(Opcode.HALT),
         ])
@@ -701,8 +701,8 @@ class TestComparison:
     def test_gt_false(self):
         """GT returns 0 when second <= top."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (3,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (3,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.GT),
             Instruction(Opcode.HALT),
         ])
@@ -711,8 +711,8 @@ class TestComparison:
     def test_lte_true_less(self):
         """LTE returns 1 when second < top."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (3,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (3,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.LTE),
             Instruction(Opcode.HALT),
         ])
@@ -721,8 +721,8 @@ class TestComparison:
     def test_lte_true_equal(self):
         """LTE returns 1 when equal."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.LTE),
             Instruction(Opcode.HALT),
         ])
@@ -731,8 +731,8 @@ class TestComparison:
     def test_lte_false(self):
         """LTE returns 0 when second > top."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (7,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (7,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.LTE),
             Instruction(Opcode.HALT),
         ])
@@ -741,8 +741,8 @@ class TestComparison:
     def test_gte_true_greater(self):
         """GTE returns 1 when second > top."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (7,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (7,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.GTE),
             Instruction(Opcode.HALT),
         ])
@@ -751,8 +751,8 @@ class TestComparison:
     def test_gte_true_equal(self):
         """GTE returns 1 when equal."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.GTE),
             Instruction(Opcode.HALT),
         ])
@@ -761,8 +761,8 @@ class TestComparison:
     def test_gte_false(self):
         """GTE returns 0 when second < top."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (3,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (3,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.GTE),
             Instruction(Opcode.HALT),
         ])
@@ -774,7 +774,7 @@ class TestBoolean:
     def test_not_true_to_false(self):
         """NOT converts non-zero to 0."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.NOT),
             Instruction(Opcode.HALT),
         ])
@@ -783,7 +783,7 @@ class TestBoolean:
     def test_not_false_to_true(self):
         """NOT converts 0 to 1."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.NOT),
             Instruction(Opcode.HALT),
         ])
@@ -792,8 +792,8 @@ class TestBoolean:
     def test_and_both_true(self):
         """AND of two truthy values is 1."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.AND),
             Instruction(Opcode.HALT),
         ])
@@ -802,8 +802,8 @@ class TestBoolean:
     def test_and_one_false(self):
         """AND with one falsy value is 0."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.AND),
             Instruction(Opcode.HALT),
         ])
@@ -812,8 +812,8 @@ class TestBoolean:
     def test_or_both_true(self):
         """OR of two truthy values is 1."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.OR),
             Instruction(Opcode.HALT),
         ])
@@ -822,8 +822,8 @@ class TestBoolean:
     def test_or_one_true(self):
         """OR with one truthy value is 1."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.OR),
             Instruction(Opcode.HALT),
         ])
@@ -832,8 +832,8 @@ class TestBoolean:
     def test_or_both_false(self):
         """OR of two falsy values is 0."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.OR),
             Instruction(Opcode.HALT),
         ])
@@ -842,8 +842,8 @@ class TestBoolean:
     def test_xor_different(self):
         """XOR of different values is 1."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.XOR),
             Instruction(Opcode.HALT),
         ])
@@ -852,8 +852,8 @@ class TestBoolean:
     def test_xor_same(self):
         """XOR of same values is 0."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.XOR),
             Instruction(Opcode.HALT),
         ])
@@ -865,8 +865,8 @@ class TestBitwise:
     def test_band(self):
         """BAND performs bitwise AND."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (0b1100,)),
-            Instruction(Opcode.PUSH, (0b1010,)),
+            Instruction(Opcode.PUSH1, (0b1100,)),
+            Instruction(Opcode.PUSH1, (0b1010,)),
             Instruction(Opcode.BAND),
             Instruction(Opcode.HALT),
         ])
@@ -875,8 +875,8 @@ class TestBitwise:
     def test_bor(self):
         """BOR performs bitwise OR."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (0b1100,)),
-            Instruction(Opcode.PUSH, (0b1010,)),
+            Instruction(Opcode.PUSH1, (0b1100,)),
+            Instruction(Opcode.PUSH1, (0b1010,)),
             Instruction(Opcode.BOR),
             Instruction(Opcode.HALT),
         ])
@@ -885,8 +885,8 @@ class TestBitwise:
     def test_bxor(self):
         """BXOR performs bitwise XOR."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (0b1100,)),
-            Instruction(Opcode.PUSH, (0b1010,)),
+            Instruction(Opcode.PUSH1, (0b1100,)),
+            Instruction(Opcode.PUSH1, (0b1010,)),
             Instruction(Opcode.BXOR),
             Instruction(Opcode.HALT),
         ])
@@ -895,7 +895,7 @@ class TestBitwise:
     def test_bnot(self):
         """BNOT performs bitwise NOT."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.BNOT),
             Instruction(Opcode.HALT),
         ])
@@ -904,8 +904,8 @@ class TestBitwise:
     def test_shl(self):
         """SHL shifts left."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (4,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (4,)),
             Instruction(Opcode.SHL),
             Instruction(Opcode.HALT),
         ])
@@ -914,8 +914,8 @@ class TestBitwise:
     def test_shr(self):
         """SHR shifts right."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (16,)),
-            Instruction(Opcode.PUSH, (2,)),
+            Instruction(Opcode.PUSH1, (16,)),
+            Instruction(Opcode.PUSH1, (2,)),
             Instruction(Opcode.SHR),
             Instruction(Opcode.HALT),
         ])
@@ -957,7 +957,7 @@ class TestAllocators:
     def test_bqmx_creates_binary_model(self):
         """BQMX creates binary model XQMX."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),  # size
+            Instruction(Opcode.PUSH1, (10,)),  # size
             Instruction(Opcode.BQMX, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -969,7 +969,7 @@ class TestAllocators:
     def test_sqmx_creates_spin_model(self):
         """SQMX creates spin model XQMX."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (8,)),
+            Instruction(Opcode.PUSH1, (8,)),
             Instruction(Opcode.SQMX, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -980,8 +980,8 @@ class TestAllocators:
     def test_xqmx_creates_discrete_model(self):
         """XQMX creates discrete model with k values."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),   # size
-            Instruction(Opcode.PUSH, (3,)),   # k
+            Instruction(Opcode.PUSH1, (5,)),   # size
+            Instruction(Opcode.PUSH1, (3,)),   # k
             Instruction(Opcode.XQMX, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -992,7 +992,7 @@ class TestAllocators:
     def test_bsmx_creates_binary_sample(self):
         """BSMX creates binary sample XQMX."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.BSMX, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1002,7 +1002,7 @@ class TestAllocators:
     def test_ssmx_creates_spin_sample(self):
         """SSMX creates spin sample XQMX."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.SSMX, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1012,8 +1012,8 @@ class TestAllocators:
     def test_xsmx_creates_discrete_sample(self):
         """XSMX creates discrete sample with k values."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (4,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (4,)),
             Instruction(Opcode.XSMX, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1028,7 +1028,7 @@ class TestVectorAccess:
         """VECPUSH appends value to vector."""
         ex = run_program([
             Instruction(Opcode.VECI, (0,)),
-            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.VECPUSH, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1040,11 +1040,11 @@ class TestVectorAccess:
         """VECGET gets value at index."""
         ex = run_program([
             Instruction(Opcode.VECI, (0,)),
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.VECPUSH, (0,)),
-            Instruction(Opcode.PUSH, (20,)),
+            Instruction(Opcode.PUSH1, (20,)),
             Instruction(Opcode.VECPUSH, (0,)),
-            Instruction(Opcode.PUSH, (1,)),     # index
+            Instruction(Opcode.PUSH1, (1,)),     # index
             Instruction(Opcode.VECGET, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1054,10 +1054,10 @@ class TestVectorAccess:
         """VECSET sets value at index."""
         ex = run_program([
             Instruction(Opcode.VECI, (0,)),
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.VECPUSH, (0,)),
-            Instruction(Opcode.PUSH, (0,)),     # index
-            Instruction(Opcode.PUSH, (99,)),    # value
+            Instruction(Opcode.PUSH1, (0,)),     # index
+            Instruction(Opcode.PUSH1, (99,)),    # value
             Instruction(Opcode.VECSET, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1068,11 +1068,11 @@ class TestVectorAccess:
         """VECLEN pushes vector length."""
         ex = run_program([
             Instruction(Opcode.VECI, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.VECPUSH, (0,)),
-            Instruction(Opcode.PUSH, (2,)),
+            Instruction(Opcode.PUSH1, (2,)),
             Instruction(Opcode.VECPUSH, (0,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.VECPUSH, (0,)),
             Instruction(Opcode.VECLEN, (0,)),
             Instruction(Opcode.HALT),
@@ -1085,9 +1085,9 @@ class TestVectorMath:
     def test_idxgrid(self):
         """IDXGRID converts (row, col) to flat index."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (2,)),     # row
-            Instruction(Opcode.PUSH, (3,)),     # col
-            Instruction(Opcode.PUSH, (5,)),     # cols
+            Instruction(Opcode.PUSH1, (2,)),     # row
+            Instruction(Opcode.PUSH1, (3,)),     # col
+            Instruction(Opcode.PUSH1, (5,)),     # cols
             Instruction(Opcode.IDXGRID),
             Instruction(Opcode.HALT),
         ])
@@ -1098,8 +1098,8 @@ class TestVectorMath:
         """IDXTRIU converts (i, j) to upper triangular index."""
         # idx = j * (j - 1) // 2 + i (with i < j)
         ex = run_program([
-            Instruction(Opcode.PUSH, (0,)),     # i
-            Instruction(Opcode.PUSH, (2,)),     # j
+            Instruction(Opcode.PUSH1, (0,)),     # i
+            Instruction(Opcode.PUSH1, (2,)),     # j
             Instruction(Opcode.IDXTRIU),
             Instruction(Opcode.HALT),
         ])
@@ -1112,9 +1112,9 @@ class TestXQMXAccess:
     def test_getline(self):
         """GETLINE gets linear coefficient."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (5,)),     # index
+            Instruction(Opcode.PUSH1, (5,)),     # index
             Instruction(Opcode.GETLINE, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1124,12 +1124,12 @@ class TestXQMXAccess:
     def test_setline(self):
         """SETLINE sets linear coefficient."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (3,)),     # index
-            Instruction(Opcode.PUSH, (5,)),     # value (as int, will be float)
+            Instruction(Opcode.PUSH1, (3,)),     # index
+            Instruction(Opcode.PUSH1, (5,)),     # value (as int, will be float)
             Instruction(Opcode.SETLINE, (0,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.GETLINE, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1138,15 +1138,15 @@ class TestXQMXAccess:
     def test_addline(self):
         """ADDLINE adds to linear coefficient."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.SETLINE, (0,)),
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (2,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (2,)),
             Instruction(Opcode.ADDLINE, (0,)),
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.GETLINE, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1155,10 +1155,10 @@ class TestXQMXAccess:
     def test_getquad(self):
         """GETQUAD gets quadratic coefficient."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (0,)),     # i
-            Instruction(Opcode.PUSH, (1,)),     # j
+            Instruction(Opcode.PUSH1, (0,)),     # i
+            Instruction(Opcode.PUSH1, (1,)),     # j
             Instruction(Opcode.GETQUAD, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1167,14 +1167,14 @@ class TestXQMXAccess:
     def test_setquad(self):
         """SETQUAD sets quadratic coefficient."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (0,)),     # i
-            Instruction(Opcode.PUSH, (1,)),     # j
-            Instruction(Opcode.PUSH, (7,)),     # value
+            Instruction(Opcode.PUSH1, (0,)),     # i
+            Instruction(Opcode.PUSH1, (1,)),     # j
+            Instruction(Opcode.PUSH1, (7,)),     # value
             Instruction(Opcode.SETQUAD, (0,)),
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.GETQUAD, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1183,18 +1183,18 @@ class TestXQMXAccess:
     def test_addquad(self):
         """ADDQUAD adds to quadratic coefficient."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.SETQUAD, (0,)),
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (4,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (4,)),
             Instruction(Opcode.ADDQUAD, (0,)),
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.GETQUAD, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1206,10 +1206,10 @@ class TestXQMXGrid:
     def test_resize(self):
         """RESIZE sets grid dimensions."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (25,)),
+            Instruction(Opcode.PUSH1, (25,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (5,)),     # rows
-            Instruction(Opcode.PUSH, (5,)),     # cols
+            Instruction(Opcode.PUSH1, (5,)),     # rows
+            Instruction(Opcode.PUSH1, (5,)),     # cols
             Instruction(Opcode.RESIZE, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1220,18 +1220,18 @@ class TestXQMXGrid:
     def test_rowfind(self):
         """ROWFIND finds first column with value."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (25,)),
+            Instruction(Opcode.PUSH1, (25,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.RESIZE, (0,)),
             # Set value at row 0, col 2 (index 2)
-            Instruction(Opcode.PUSH, (2,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (2,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.SETLINE, (0,)),
             # Find in row 0
-            Instruction(Opcode.PUSH, (0,)),     # row
-            Instruction(Opcode.PUSH, (1,)),     # value
+            Instruction(Opcode.PUSH1, (0,)),     # row
+            Instruction(Opcode.PUSH1, (1,)),     # value
             Instruction(Opcode.ROWFIND, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1240,18 +1240,18 @@ class TestXQMXGrid:
     def test_colfind(self):
         """COLFIND finds first row with value."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (25,)),
+            Instruction(Opcode.PUSH1, (25,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.RESIZE, (0,)),
             # Set value at row 2, col 0 (index 10)
-            Instruction(Opcode.PUSH, (10,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (10,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.SETLINE, (0,)),
             # Find in col 0
-            Instruction(Opcode.PUSH, (0,)),     # col
-            Instruction(Opcode.PUSH, (1,)),     # value
+            Instruction(Opcode.PUSH1, (0,)),     # col
+            Instruction(Opcode.PUSH1, (1,)),     # value
             Instruction(Opcode.COLFIND, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1260,23 +1260,23 @@ class TestXQMXGrid:
     def test_rowsum(self):
         """ROWSUM sums values in row."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (25,)),
+            Instruction(Opcode.PUSH1, (25,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.RESIZE, (0,)),
             # Set values in row 0: indices 0, 1, 2
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.SETLINE, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (2,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (2,)),
             Instruction(Opcode.SETLINE, (0,)),
-            Instruction(Opcode.PUSH, (2,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (2,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.SETLINE, (0,)),
             # Sum row 0
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.ROWSUM, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1285,23 +1285,23 @@ class TestXQMXGrid:
     def test_colsum(self):
         """COLSUM sums values in column."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (25,)),
+            Instruction(Opcode.PUSH1, (25,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.RESIZE, (0,)),
             # Set values in col 0: indices 0, 5, 10
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.SETLINE, (0,)),
-            Instruction(Opcode.PUSH, (5,)),
-            Instruction(Opcode.PUSH, (2,)),
+            Instruction(Opcode.PUSH1, (5,)),
+            Instruction(Opcode.PUSH1, (2,)),
             Instruction(Opcode.SETLINE, (0,)),
-            Instruction(Opcode.PUSH, (10,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (10,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.SETLINE, (0,)),
             # Sum col 0
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.COLSUM, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1314,15 +1314,15 @@ class TestXQMXHighLevel:
         """ ONEHOTR adds one-hot constraint for a row. """
         ex = run_program([
             # Create 3x3 grid model (size=9)
-            Instruction(Opcode.PUSH, (9,)),
+            Instruction(Opcode.PUSH1, (9,)),
             Instruction(Opcode.BQMX, (0,)),
             # Set grid dimensions
-            Instruction(Opcode.PUSH, (3,)),     # rows
-            Instruction(Opcode.PUSH, (3,)),     # cols
+            Instruction(Opcode.PUSH1, (3,)),     # rows
+            Instruction(Opcode.PUSH1, (3,)),     # cols
             Instruction(Opcode.RESIZE, (0,)),
             # Apply one-hot constraint for row 0 with penalty 1
-            Instruction(Opcode.PUSH, (0,)),     # row
-            Instruction(Opcode.PUSH, (1,)),     # penalty
+            Instruction(Opcode.PUSH1, (0,)),     # row
+            Instruction(Opcode.PUSH1, (1,)),     # penalty
             Instruction(Opcode.ONEHOTR, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1334,15 +1334,15 @@ class TestXQMXHighLevel:
         """ ONEHOTC adds one-hot constraint for a column. """
         ex = run_program([
             # Create 3x3 grid model (size=9)
-            Instruction(Opcode.PUSH, (9,)),
+            Instruction(Opcode.PUSH1, (9,)),
             Instruction(Opcode.BQMX, (0,)),
             # Set grid dimensions
-            Instruction(Opcode.PUSH, (3,)),     # rows
-            Instruction(Opcode.PUSH, (3,)),     # cols
+            Instruction(Opcode.PUSH1, (3,)),     # rows
+            Instruction(Opcode.PUSH1, (3,)),     # cols
             Instruction(Opcode.RESIZE, (0,)),
             # Apply one-hot constraint for col 0 with penalty 1
-            Instruction(Opcode.PUSH, (0,)),     # col
-            Instruction(Opcode.PUSH, (1,)),     # penalty
+            Instruction(Opcode.PUSH1, (0,)),     # col
+            Instruction(Opcode.PUSH1, (1,)),     # penalty
             Instruction(Opcode.ONEHOTC, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1358,11 +1358,11 @@ class TestXQMXHighLevel:
     def test_exclude(self):
         """EXCLUDE adds exclusion constraint."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (0,)),     # i
-            Instruction(Opcode.PUSH, (1,)),     # j
-            Instruction(Opcode.PUSH, (2,)),     # penalty
+            Instruction(Opcode.PUSH1, (0,)),     # i
+            Instruction(Opcode.PUSH1, (1,)),     # j
+            Instruction(Opcode.PUSH1, (2,)),     # penalty
             Instruction(Opcode.EXCLUDE, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1372,11 +1372,11 @@ class TestXQMXHighLevel:
     def test_implies(self):
         """IMPLIES adds implication constraint."""
         ex = run_program([
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (0,)),     # i
-            Instruction(Opcode.PUSH, (1,)),     # j
-            Instruction(Opcode.PUSH, (1,)),     # penalty
+            Instruction(Opcode.PUSH1, (0,)),     # i
+            Instruction(Opcode.PUSH1, (1,)),     # j
+            Instruction(Opcode.PUSH1, (1,)),     # penalty
             Instruction(Opcode.IMPLIES, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -1388,22 +1388,22 @@ class TestXQMXHighLevel:
         """ENERGY computes energy of sample against model."""
         ex = run_program([
             # Create model with linear terms
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.BQMX, (0,)),
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.SETLINE, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (2,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (2,)),
             Instruction(Opcode.SETLINE, (0,)),
             # Create sample with values
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.BSMX, (1,)),
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.SETLINE, (1,)),
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.SETLINE, (1,)),
             # Compute energy
             Instruction(Opcode.ENERGY, (0, 1)),
@@ -1436,7 +1436,7 @@ class TestErrorHandling:
     def test_type_mismatch_vec_expected(self):
         """Type mismatch when Vec expected raises TypeMismatch."""
         prog = make_program([
-            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.STOW, (0,)),     # r0 = int
             Instruction(Opcode.VECLEN, (0,)),   # Expects Vec
             Instruction(Opcode.HALT),
@@ -1447,9 +1447,9 @@ class TestErrorHandling:
     def test_type_mismatch_xqmx_expected(self):
         """Type mismatch when XQMX expected raises TypeMismatch."""
         prog = make_program([
-            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.STOW, (0,)),     # r0 = int
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.GETLINE, (0,)),  # Expects XQMX
             Instruction(Opcode.HALT),
         ])
@@ -1486,11 +1486,11 @@ class TestErrorHandling:
     def test_xqmx_mode_error(self):
         """HLF on SAMPLE mode raises XQMXModeError."""
         prog = make_program([
-            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH1, (5,)),
             Instruction(Opcode.BSMX, (0,)),     # Create SAMPLE
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.EXCLUDE, (0,)),  # Requires MODEL
             Instruction(Opcode.HALT),
         ])
@@ -1518,13 +1518,13 @@ class TestTracerIntegration:
                 pass
 
         prog = make_program([
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.HALT),
         ])
         ex = Executor(tracer=TestTracer())
         ex.execute(prog)
 
-        assert ("begin", Opcode.PUSH) in events
+        assert ("begin", Opcode.PUSH1) in events
         assert ("begin", Opcode.HALT) in events
 
     def test_tracer_on_step_end(self):
@@ -1545,13 +1545,13 @@ class TestTracerIntegration:
                 pass
 
         prog = make_program([
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.HALT),
         ])
         ex = Executor(tracer=TestTracer())
         ex.execute(prog)
 
-        assert ("end", Opcode.PUSH) in events
+        assert ("end", Opcode.PUSH1) in events
 
     def test_tracer_on_error(self):
         """Tracer receives on_error calls."""
@@ -1612,9 +1612,9 @@ class TestExecutorHelpers:
     def test_execute_returns_output(self):
         """execute returns output dictionary."""
         prog = make_program([
-            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.STOW, (0,)),
-            Instruction(Opcode.PUSH, (0,)),     # slot index
+            Instruction(Opcode.PUSH1, (0,)),     # slot index
             Instruction(Opcode.OUTPUT, (0,)),   # r0 -> output[0]
             Instruction(Opcode.HALT),
         ])
@@ -1625,9 +1625,9 @@ class TestExecutorHelpers:
     def test_execute_with_input_data(self):
         """execute accepts input data."""
         prog = make_program([
-            Instruction(Opcode.PUSH, (0,)),     # input slot
+            Instruction(Opcode.PUSH1, (0,)),     # input slot
             Instruction(Opcode.INPUT, (0,)),    # input[0] -> r0
-            Instruction(Opcode.PUSH, (1,)),     # output slot
+            Instruction(Opcode.PUSH1, (1,)),     # output slot
             Instruction(Opcode.OUTPUT, (0,)),   # r0 -> output[1]
             Instruction(Opcode.HALT),
         ])
@@ -1638,7 +1638,7 @@ class TestExecutorHelpers:
     def test_step_returns_continue_flag(self):
         """step returns True to continue, False to stop."""
         prog = make_program([
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.HALT),
         ])
         ex = Executor()
@@ -1654,8 +1654,8 @@ class TestProgramAndInstruction:
     def test_program_length(self):
         """Program length equals instruction count."""
         prog = make_program([
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (2,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (2,)),
             Instruction(Opcode.HALT),
         ])
         assert len(prog) == 3
@@ -1663,17 +1663,17 @@ class TestProgramAndInstruction:
     def test_program_getitem(self):
         """Program supports index access."""
         prog = make_program([
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.ADD),
             Instruction(Opcode.HALT),
         ])
-        assert prog[0].opcode == Opcode.PUSH
+        assert prog[0].opcode == Opcode.PUSH1
         assert prog[1].opcode == Opcode.ADD
         assert prog[2].opcode == Opcode.HALT
 
     def test_instruction_operands(self):
         """Instruction stores operands."""
-        instr = Instruction(Opcode.PUSH, (42,))
+        instr = Instruction(Opcode.PUSH1, (42,))
         assert instr.operands == (42,)
 
     def test_instruction_no_operands(self):

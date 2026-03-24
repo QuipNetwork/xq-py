@@ -17,8 +17,8 @@ class TestEventCollection:
     def test_silent_collects_events(self):
         tracer = Tracer(verbosity=0)
         prog = make_program([
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (2,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (2,)),
             Instruction(Opcode.ADD),
             Instruction(Opcode.HALT),
         ])
@@ -33,19 +33,19 @@ class TestEventCollection:
     def test_event_has_opcode(self):
         tracer = Tracer(verbosity=0)
         prog = make_program([
-            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.HALT),
         ])
         ex = Executor(tracer=tracer)
         ex.execute(prog)
-        assert tracer.events[0]["opcode"] == "PUSH"
+        assert tracer.events[0]["opcode"] == "PUSH1"
         assert tracer.events[0]["operands"] == (42,)
 
     def test_event_captures_stack(self):
         tracer = Tracer(verbosity=0)
         prog = make_program([
-            Instruction(Opcode.PUSH, (10,)),
-            Instruction(Opcode.PUSH, (20,)),
+            Instruction(Opcode.PUSH1, (10,)),
+            Instruction(Opcode.PUSH1, (20,)),
             Instruction(Opcode.HALT),
         ])
         ex = Executor(tracer=tracer)
@@ -60,7 +60,7 @@ class TestEventCollection:
     def test_event_captures_register_changes(self):
         tracer = Tracer(verbosity=0)
         prog = make_program([
-            Instruction(Opcode.PUSH, (99,)),
+            Instruction(Opcode.PUSH1, (99,)),
             Instruction(Opcode.STOW, (5,)),
             Instruction(Opcode.HALT),
         ])
@@ -74,8 +74,8 @@ class TestEventCollection:
     def test_no_change_when_register_unchanged(self):
         tracer = Tracer(verbosity=0)
         prog = make_program([
-            Instruction(Opcode.PUSH, (1,)),
-            Instruction(Opcode.PUSH, (2,)),
+            Instruction(Opcode.PUSH1, (1,)),
+            Instruction(Opcode.PUSH1, (2,)),
             Instruction(Opcode.ADD),
             Instruction(Opcode.HALT),
         ])
@@ -93,7 +93,7 @@ class TestHaltEvent:
     def test_halt_event_recorded(self):
         tracer = Tracer(verbosity=0)
         prog = make_program([
-            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.PUSH1, (42,)),
             Instruction(Opcode.STOW, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -107,9 +107,9 @@ class TestHaltEvent:
     def test_halt_event_tracks_outputs(self):
         tracer = Tracer(verbosity=0)
         prog = make_program([
-            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH1, (10,)),
             Instruction(Opcode.STOW, (0,)),
-            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.PUSH1, (0,)),
             Instruction(Opcode.OUTPUT, (0,)),
             Instruction(Opcode.HALT),
         ])
@@ -145,7 +145,7 @@ class TestFormatting:
         tracer = Tracer(verbosity=1)
         event = {
             "pc": 0,
-            "opcode": "PUSH",
+            "opcode": "PUSH1",
             "operands": (42,),
             "stack_before": [],
             "stack_after": [42],
@@ -154,7 +154,7 @@ class TestFormatting:
             "changed": set(),
         }
         text = tracer.format_event(event)
-        assert "[0000] PUSH 42" == text
+        assert "[0000] PUSH1 42" == text
 
     def test_detailed_format_includes_stack(self):
         tracer = Tracer(verbosity=2)
@@ -215,13 +215,13 @@ class TestFormatting:
     def test_format_trace_all_events(self):
         tracer = Tracer(verbosity=0)
         prog = make_program([
-            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH1, (1,)),
             Instruction(Opcode.HALT),
         ])
         ex = Executor(tracer=tracer)
         ex.execute(prog)
         text = tracer.format_trace()
-        assert "PUSH" in text
+        assert "PUSH1" in text
         assert "halt" in text
 
 # === Integration ===
@@ -232,8 +232,8 @@ class TestTracerIntegration:
     def test_loop_tracing(self):
         tracer = Tracer(verbosity=0)
         prog = make_program([
-            Instruction(Opcode.PUSH, (0,)),
-            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.PUSH1, (0,)),
+            Instruction(Opcode.PUSH1, (3,)),
             Instruction(Opcode.RANGE),
             Instruction(Opcode.LVAL, (0,)),
             Instruction(Opcode.NEXT),
@@ -249,8 +249,8 @@ class TestTracerIntegration:
 
     def test_tracer_does_not_affect_execution(self):
         prog = make_program([
-            Instruction(Opcode.PUSH, (10,)),
-            Instruction(Opcode.PUSH, (20,)),
+            Instruction(Opcode.PUSH1, (10,)),
+            Instruction(Opcode.PUSH1, (20,)),
             Instruction(Opcode.ADD),
             Instruction(Opcode.HALT),
         ])

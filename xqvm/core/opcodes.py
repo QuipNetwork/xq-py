@@ -104,73 +104,68 @@ class Opcode(Enum):
         "Write register to output slot",
     )
 
-    # Stack Manipulation — Load Constant (0x11-0x18)
-    LDC1 = OpcodeMeta(
+    # Stack Manipulation — Push (0x11-0x18)
+    PUSH1 = OpcodeMeta(
         0x11, 0, 1,
         1, (OperandType.IMMEDIATE,),
-        "Load 1-byte constant onto stack",
+        "Push 1-byte integer to stack",
     )
-    LDC2 = OpcodeMeta(
+    PUSH2 = OpcodeMeta(
         0x12, 0, 1,
         2, (OperandType.IMMEDIATE, OperandType.IMMEDIATE),
-        "Load 2-byte constant onto stack",
+        "Push 2-byte integer to stack",
     )
-    LDC3 = OpcodeMeta(
+    PUSH3 = OpcodeMeta(
         0x13, 0, 1,
         3, (OperandType.IMMEDIATE, OperandType.IMMEDIATE, OperandType.IMMEDIATE),
-        "Load 3-byte constant onto stack",
+        "Push 3-byte integer to stack",
     )
-    LDC4 = OpcodeMeta(
+    PUSH4 = OpcodeMeta(
         0x14, 0, 1,
         4, (OperandType.IMMEDIATE,) * 4,
-        "Load 4-byte constant onto stack",
+        "Push 4-byte integer to stack",
     )
-    LDC5 = OpcodeMeta(
+    PUSH5 = OpcodeMeta(
         0x15, 0, 1,
         5, (OperandType.IMMEDIATE,) * 5,
-        "Load 5-byte constant onto stack",
+        "Push 5-byte integer to stack",
     )
-    LDC6 = OpcodeMeta(
+    PUSH6 = OpcodeMeta(
         0x16, 0, 1,
         6, (OperandType.IMMEDIATE,) * 6,
-        "Load 6-byte constant onto stack",
+        "Push 6-byte integer to stack",
     )
-    LDC7 = OpcodeMeta(
+    PUSH7 = OpcodeMeta(
         0x17, 0, 1,
         7, (OperandType.IMMEDIATE,) * 7,
-        "Load 7-byte constant onto stack",
+        "Push 7-byte integer to stack",
     )
-    LDC8 = OpcodeMeta(
+    PUSH8 = OpcodeMeta(
         0x18, 0, 1,
         8, (OperandType.IMMEDIATE,) * 8,
-        "Load 8-byte constant onto stack",
+        "Push 8-byte integer to stack",
     )
 
-    # Stack Manipulation — Operations (0x1A-0x1E)
-    PUSH = OpcodeMeta(
-        0x1A, 0, 1,
-        1, (OperandType.IMMEDIATE,),
-        "Push immediate value onto stack",
-    )
+    # Stack Manipulation — Operations (0x10, 0x1A-0x1C)
     POP = OpcodeMeta(
-        0x1B, 1, 0,
+        0x10, 1, 0,
         0, (),
         "Pop and discard top of stack",
     )
+    SCLR = OpcodeMeta(
+        0x1A, 0, 0,
+        0, (),
+        "Clear entire stack",
+    )
     SWAP = OpcodeMeta(
-        0x1C, 2, 2,
+        0x1B, 2, 2,
         0, (),
         "Swap top two stack values",
     )
-    DUPL = OpcodeMeta(
-        0x1D, 1, 2,
+    COPY = OpcodeMeta(
+        0x1C, 1, 2,
         0, (),
         "Duplicate top of stack",
-    )
-    SCLR = OpcodeMeta(
-        0x1E, 0, 0,
-        0, (),
-        "Clear entire stack",
     )
 
     # Arithmetic (0x20-0x2B)
@@ -512,4 +507,4 @@ class Opcode(Enum):
             return None
 
 # Verify we have exactly 85 opcodes
-assert len(Opcode) == 85, f"Expected 85 opcodes, got {len(Opcode)}"
+assert len(Opcode) == 84, f"Expected 84 opcodes, got {len(Opcode)}"

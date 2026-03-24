@@ -39,8 +39,8 @@ def executor() -> Executor:
 def simple_program() -> Program:
     """Create a simple program that pushes, adds, and stores."""
     return Program([
-        Instruction(Opcode.PUSH, (10,)),
-        Instruction(Opcode.PUSH, (5,)),
+        Instruction(Opcode.PUSH1, (10,)),
+        Instruction(Opcode.PUSH1, (5,)),
         Instruction(Opcode.ADD),
         Instruction(Opcode.STOW, (0,)),
         Instruction(Opcode.HALT),

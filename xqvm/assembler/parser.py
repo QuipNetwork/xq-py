@@ -61,7 +61,7 @@ def _parse_operand(token: str, expected_type: OperandType, line: int) -> int:
     except ValueError:
         raise ParseError(f"Invalid integer literal '{token}'", line)
 
-def _ldc_byte_count(value: int) -> int:
+def _push_byte_count(value: int) -> int:
     """ Compute the minimum byte count to represent a signed integer. """
     for n in range(1, 9):
         lo = -(1 << (8 * n - 1))
@@ -70,22 +70,22 @@ def _ldc_byte_count(value: int) -> int:
             return n
     return 8
 
-_LDC_MIN = -(2 ** 63)
-_LDC_MAX = 2 ** 63 - 1
+_PUSH_MIN = -(2 ** 63)
+_PUSH_MAX = 2 ** 63 - 1
 
-def _expand_ldc(
+def _expand_push(
     operand_tokens: list[str],
     line_num: int,
 ) -> tuple[str, list[str]]:
     """
-    Expand LDC sugar into LDCn with byte operands.
+    Expand PUSH sugar into PUSHn with byte operands.
 
-    LDC <value> → LDCn <b0> <b1> ... where n is the minimum byte count
+    PUSH <value> → PUSHn <b0> <b1> ... where n is the minimum byte count
     and bytes are big-endian signed two's complement.
     """
     if len(operand_tokens) != 1:
         raise ParseError(
-            f"LDC expects 1 operand, got {len(operand_tokens)}", line_num
+            f"PUSH expects 1 operand, got {len(operand_tokens)}", line_num
         )
 
     token = operand_tokens[0]
@@ -100,24 +100,24 @@ def _expand_ldc(
     except ValueError:
         raise ParseError(f"Invalid integer literal '{token}'", line_num)
 
-    if not (_LDC_MIN <= value <= _LDC_MAX):
+    if not (_PUSH_MIN <= value <= _PUSH_MAX):
         raise ParseError(
-            f"LDC value out of range (must fit in 8 bytes signed): {value}",
+            f"PUSH value out of range (must fit in 8 bytes signed): {value}",
             line_num,
         )
 
-    n = _ldc_byte_count(value)
+    n = _push_byte_count(value)
     encoded = value.to_bytes(n, byteorder="big", signed=True)
     byte_tokens = [str(b) for b in encoded]
 
-    return (f"LDC{n}", byte_tokens)
+    return (f"PUSH{n}", byte_tokens)
 
 def _tokenize(source: str) -> list[tuple[str, list[str], int]]:
     """
     Pass 1: Tokenize source into (opcode_name, operand_tokens, line_number) tuples.
 
     Blank lines and comment-only lines are skipped.
-    Expands LDC sugar into the appropriate LDCn opcode.
+    Expands PUSH sugar into the appropriate PUSHn opcode.
     """
     tokens: list[tuple[str, list[str], int]] = []
 
@@ -130,8 +130,8 @@ def _tokenize(source: str) -> list[tuple[str, list[str], int]]:
         opcode_name = parts[0]
         operand_tokens = parts[1:]
 
-        if opcode_name.upper() == "LDC":
-            opcode_name, operand_tokens = _expand_ldc(operand_tokens, line_num)
+        if opcode_name.upper() == "PUSH":
+            opcode_name, operand_tokens = _expand_push(operand_tokens, line_num)
 
         tokens.append((opcode_name, operand_tokens, line_num))
 

@@ -53,13 +53,13 @@ RANGE
   MUL
 
   # i = edges[offset]
-  DUPL
+  COPY
   VECGET r1
   STOW r11            # r11 = i
 
   # j = edges[offset + 1]
   INC
-  DUPL
+  COPY
   VECGET r1
   STOW r12            # r12 = j
 

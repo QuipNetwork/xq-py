@@ -34,8 +34,7 @@ INPUT r1              # r1 = distances vec
 
 # === Compute N*N, allocate model, set grid ===
 LOAD r0
-DUPL
-MUL                   # N*N
+SQR                   # N*N
 STOW r2               # r2 = N*N
 LOAD r2
 BQMX r4               # r4 = BQMX(N*N)
@@ -47,20 +46,17 @@ RESIZE r4             # r4.grid = NxN
 # for ci in [0, N-1):
 PUSH 0
 LOAD r0
-PUSH 1
-SUB                   # count = N - 1
+DEC                   # count = N - 1
 RANGE
   LVAL r10            # r10 = ci
 
   # for cj in [ci+1, N):
   LOAD r10
-  PUSH 1
-  ADD                 # start = ci + 1
+  INC                 # start = ci + 1
   LOAD r0
   LOAD r10
   SUB
-  PUSH 1
-  SUB                 # count = N - ci - 1
+  DEC                 # count = N - ci - 1
   RANGE
     LVAL r11          # r11 = cj
 
@@ -79,8 +75,7 @@ RANGE
 
       # p_next = (p + 1) % N
       LOAD r12
-      PUSH 1
-      ADD
+      INC
       LOAD r0
       MOD
       STOW r13        # r13 = p_next

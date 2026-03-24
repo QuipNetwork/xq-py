@@ -58,15 +58,13 @@ RANGE
   STOW r11            # r11 = i
 
   # j = edges[offset + 1]
-  PUSH 1
-  ADD
+  INC
   DUPL
   VECGET r1
   STOW r12            # r12 = j
 
   # w = edges[offset + 2]
-  PUSH 1
-  ADD
+  INC
   VECGET r1
   STOW r13            # r13 = w
 

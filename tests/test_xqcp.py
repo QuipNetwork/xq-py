@@ -75,8 +75,20 @@ class TestExpressions:
     def test_binop_add(self) -> None:
         from xqcp import Literal, BinOp
         lines: list[str] = []
-        BinOp("ADD", Literal(1), Literal(2)).emit(lines, 0)
-        assert lines == ["PUSH 1", "PUSH 2", "ADD"]
+        BinOp("ADD", Literal(3), Literal(2)).emit(lines, 0)
+        assert lines == ["PUSH 3", "PUSH 2", "ADD"]
+
+    def test_binop_add_inc(self) -> None:
+        from xqcp import Literal, BinOp, RegLoad
+        lines: list[str] = []
+        BinOp("ADD", RegLoad(0), Literal(1)).emit(lines, 0)
+        assert lines == ["LOAD r0", "INC"]
+
+    def test_binop_sub_dec(self) -> None:
+        from xqcp import Literal, BinOp, RegLoad
+        lines: list[str] = []
+        BinOp("SUB", RegLoad(0), Literal(1)).emit(lines, 0)
+        assert lines == ["LOAD r0", "DEC"]
 
     def test_input_ref_arithmetic(self) -> None:
         from xqcp import InputRef
@@ -84,7 +96,7 @@ class TestExpressions:
         expr = n - 1
         lines: list[str] = []
         expr.emit(lines, 0)
-        assert lines == ["LOAD r0", "PUSH 1", "SUB"]
+        assert lines == ["LOAD r0", "DEC"]
 
     def test_loop_var_arithmetic(self) -> None:
         from xqcp import LoopVar
@@ -92,7 +104,7 @@ class TestExpressions:
         expr = (v + 1) % LoopVar(0, "n")
         lines: list[str] = []
         expr.emit(lines, 0)
-        assert lines == ["LOAD r5", "PUSH 1", "ADD", "LOAD r0", "MOD"]
+        assert lines == ["LOAD r5", "INC", "LOAD r0", "MOD"]
 
     def test_triu_expr(self) -> None:
         from xqcp import LoopVar

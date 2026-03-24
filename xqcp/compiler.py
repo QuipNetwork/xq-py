@@ -95,15 +95,14 @@ def _emit_model_allocation(d: dict[str, Any], lines: list[str], indent: int) -> 
     is_2d: bool = d["is_2d"]
     cols_reg: int | None = d["cols_reg"]
 
-    # Emit size expression (optimize N*N → LOAD, DUPL, MUL)
+    # Emit size expression (optimize N*N → LOAD, SQR)
     if isinstance(size_expr, BinOp) and size_expr.op == "MUL":
         left_reg = expr_reg(size_expr.left) or _input_reg(size_expr.left)
         right_reg = expr_reg(size_expr.right) or _input_reg(size_expr.right)
 
         if left_reg is not None and left_reg == right_reg:
             lines.append(line(f"LOAD r{left_reg}", indent))
-            lines.append(line("DUPL", indent))
-            lines.append(line("MUL", indent))
+            lines.append(line("SQR", indent))
         else:
             size_expr.emit(lines, indent)
     else:

@@ -142,20 +142,33 @@ class BinOp(Expr, _ExprOps):
         self.right = right
 
     def emit(self, lines: list[str], indent: int) -> None:
+        # Optimize x + 1 → INC, x - 1 → DEC
+        if self.op == "ADD" and isinstance(self.right, Literal) and self.right.value == 1:
+            self.left.emit(lines, indent)
+            lines.append(line("INC", indent))
+            return
+        if self.op == "ADD" and isinstance(self.left, Literal) and self.left.value == 1:
+            self.right.emit(lines, indent)
+            lines.append(line("INC", indent))
+            return
+        if self.op == "SUB" and isinstance(self.right, Literal) and self.right.value == 1:
+            self.left.emit(lines, indent)
+            lines.append(line("DEC", indent))
+            return
+
         self.left.emit(lines, indent)
         self.right.emit(lines, indent)
         lines.append(line(self.op, indent))
 
-class DuplMul(Expr, _ExprOps):
-    """ Optimized self*self pattern: LOAD, DUPL, MUL instead of LOAD, LOAD, MUL. """
+class SqrExpr(Expr, _ExprOps):
+    """ Square expression: emits SQR opcode. """
 
     def __init__(self, inner: Expr) -> None:
         self.inner = inner
 
     def emit(self, lines: list[str], indent: int) -> None:
         self.inner.emit(lines, indent)
-        lines.append(line("DUPL", indent))
-        lines.append(line("MUL", indent))
+        lines.append(line("SQR", indent))
 
 class VecGetExpr(Expr, _ExprOps):
     """ Vector element access: VECGET r<vec>. """

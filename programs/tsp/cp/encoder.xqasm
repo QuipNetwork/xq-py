@@ -6,8 +6,7 @@ INPUT r1
 
 # === Allocations ===
 LOAD r0
-DUPL
-MUL
+SQR
 BQMX r3
 LOAD r0
 STOW r2
@@ -18,17 +17,14 @@ RESIZE r3
 # === Objective ===
 PUSH 0
 LOAD r0
-PUSH 1
-SUB
+DEC
 RANGE
   LVAL r4
   LOAD r4
-  PUSH 1
-  ADD
+  INC
   LOAD r0
   LOAD r4
-  PUSH 1
-  ADD
+  INC
   SUB
   RANGE
     LVAL r5
@@ -50,8 +46,7 @@ RANGE
       LOAD r2
       MUL
       LOAD r7
-      PUSH 1
-      ADD
+      INC
       LOAD r0
       MOD
       ADD
@@ -66,8 +61,7 @@ RANGE
       LOAD r2
       MUL
       LOAD r7
-      PUSH 1
-      ADD
+      INC
       LOAD r0
       MOD
       ADD

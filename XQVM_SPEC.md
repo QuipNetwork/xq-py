@@ -119,6 +119,8 @@ Programs execute independently with no shared state. Communication occurs only t
 | 0x17 | `LDC7` | 7 × `<int>` | → push value | Load 7-byte constant |
 | 0x18 | `LDC8` | 8 × `<int>` | → push value | Load 8-byte constant |
 
+Operand bytes are concatenated in big-endian order (most significant byte first) and interpreted as a signed two's complement integer. For example, `LDC2 0xFF 0xFE` pushes −2.
+
 ### Stack Manipulation
 
 | Code | Opcode | Operands | Stack | Description |

@@ -1,5 +1,5 @@
 """
-Tests for Executor and all 68 opcode handlers.
+Tests for Executor and all 85 opcode handlers.
 """
 
 import pytest
@@ -221,6 +221,25 @@ class TestStackRegisterIO:
         assert ex.state.peek(0) == 1
         assert ex.state.peek(1) == 2
 
+    def test_sclr(self):
+        """SCLR clears entire stack."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (1,)),
+            Instruction(Opcode.PUSH, (2,)),
+            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.SCLR),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.stack_depth == 0
+
+    def test_sclr_empty_stack(self):
+        """SCLR on empty stack is a no-op."""
+        ex = run_program([
+            Instruction(Opcode.SCLR),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.stack_depth == 0
+
     def test_load(self):
         """LOAD pushes register value onto stack."""
         ex = run_program([
@@ -262,6 +281,136 @@ class TestStackRegisterIO:
         ex = Executor()
         output = ex.execute(prog)
         assert output[0] == 99
+
+    def test_drop_int_register(self):
+        """DROP clears an int register."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (42,)),
+            Instruction(Opcode.STOW, (0,)),
+            Instruction(Opcode.DROP, (0,)),
+            Instruction(Opcode.HALT),
+        ])
+        assert not ex.state.has_register(0)
+
+    def test_drop_vec_register(self):
+        """DROP clears a vec register."""
+        ex = run_program([
+            Instruction(Opcode.VEC, (0,)),
+            Instruction(Opcode.DROP, (0,)),
+            Instruction(Opcode.HALT),
+        ])
+        assert not ex.state.has_register(0)
+
+    def test_drop_unset_register(self):
+        """DROP on unset register is a no-op."""
+        ex = run_program([
+            Instruction(Opcode.DROP, (5,)),
+            Instruction(Opcode.HALT),
+        ])
+        assert not ex.state.has_register(5)
+
+    def test_drop_then_load_raises(self):
+        """LOAD after DROP raises RegisterNotFound."""
+        prog = make_program([
+            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.STOW, (0,)),
+            Instruction(Opcode.DROP, (0,)),
+            Instruction(Opcode.LOAD, (0,)),
+            Instruction(Opcode.HALT),
+        ])
+        with pytest.raises(RegisterNotFound):
+            Executor().execute(prog)
+
+class TestLoadConstant:
+    """Tests for LDC1-LDC8 load constant opcodes."""
+
+    def test_ldc1_positive(self):
+        """LDC1 loads 1-byte positive constant."""
+        ex = run_program([
+            Instruction(Opcode.LDC1, (42,)),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 42
+
+    def test_ldc1_negative(self):
+        """LDC1 loads 1-byte negative constant (two's complement)."""
+        ex = run_program([
+            Instruction(Opcode.LDC1, (0xFF,)),  # -1
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == -1
+
+    def test_ldc1_zero(self):
+        """LDC1 loads zero."""
+        ex = run_program([
+            Instruction(Opcode.LDC1, (0,)),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 0
+
+    def test_ldc2(self):
+        """LDC2 loads 2-byte constant."""
+        ex = run_program([
+            Instruction(Opcode.LDC2, (0x01, 0x00)),  # 256
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 256
+
+    def test_ldc2_negative(self):
+        """LDC2 loads 2-byte negative constant."""
+        ex = run_program([
+            Instruction(Opcode.LDC2, (0xFF, 0xFE)),  # -2
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == -2
+
+    def test_ldc3(self):
+        """LDC3 loads 3-byte constant."""
+        ex = run_program([
+            Instruction(Opcode.LDC3, (0x01, 0x00, 0x00)),  # 65536
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 65536
+
+    def test_ldc4(self):
+        """LDC4 loads 4-byte constant."""
+        ex = run_program([
+            Instruction(Opcode.LDC4, (0x00, 0x01, 0x00, 0x00)),  # 65536
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 65536
+
+    def test_ldc4_max_positive(self):
+        """LDC4 loads max positive 4-byte value."""
+        ex = run_program([
+            Instruction(Opcode.LDC4, (0x7F, 0xFF, 0xFF, 0xFF)),  # 2^31 - 1
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 2147483647
+
+    def test_ldc4_min_negative(self):
+        """LDC4 loads min negative 4-byte value."""
+        ex = run_program([
+            Instruction(Opcode.LDC4, (0x80, 0x00, 0x00, 0x00)),  # -2^31
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == -2147483648
+
+    def test_ldc8(self):
+        """LDC8 loads 8-byte constant."""
+        ex = run_program([
+            Instruction(Opcode.LDC8, (0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00)),  # 256
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 256
+
+    def test_ldc8_large_negative(self):
+        """LDC8 loads large negative value."""
+        ex = run_program([
+            Instruction(Opcode.LDC8, (0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF)),  # -1
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == -1
 
 class TestArithmetic:
     """Tests for arithmetic opcodes."""
@@ -355,6 +504,146 @@ class TestArithmetic:
             Instruction(Opcode.HALT),
         ])
         assert ex.state.peek(0) == 10
+
+    def test_sqr(self):
+        """SQR squares top value."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (7,)),
+            Instruction(Opcode.SQR),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 49
+
+    def test_sqr_negative(self):
+        """SQR of negative is positive."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (-3,)),
+            Instruction(Opcode.SQR),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 9
+
+    def test_sqr_zero(self):
+        """SQR of zero is zero."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.SQR),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 0
+
+    def test_abs_positive(self):
+        """ABS of positive is unchanged."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.ABS),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 5
+
+    def test_abs_negative(self):
+        """ABS of negative is positive."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (-5,)),
+            Instruction(Opcode.ABS),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 5
+
+    def test_abs_zero(self):
+        """ABS of zero is zero."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.ABS),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 0
+
+    def test_min(self):
+        """MIN pushes the smaller of two values."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.MIN),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 3
+
+    def test_min_equal(self):
+        """MIN with equal values returns that value."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.PUSH, (5,)),
+            Instruction(Opcode.MIN),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 5
+
+    def test_min_negative(self):
+        """MIN with negative values."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (-1,)),
+            Instruction(Opcode.PUSH, (-5,)),
+            Instruction(Opcode.MIN),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == -5
+
+    def test_max(self):
+        """MAX pushes the larger of two values."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (10,)),
+            Instruction(Opcode.PUSH, (3,)),
+            Instruction(Opcode.MAX),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 10
+
+    def test_max_negative(self):
+        """MAX with negative values."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (-1,)),
+            Instruction(Opcode.PUSH, (-5,)),
+            Instruction(Opcode.MAX),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == -1
+
+    def test_inc(self):
+        """INC increments top value."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (41,)),
+            Instruction(Opcode.INC),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 42
+
+    def test_inc_negative(self):
+        """INC on -1 produces 0."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (-1,)),
+            Instruction(Opcode.INC),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 0
+
+    def test_dec(self):
+        """DEC decrements top value."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (43,)),
+            Instruction(Opcode.DEC),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == 42
+
+    def test_dec_zero(self):
+        """DEC on 0 produces -1."""
+        ex = run_program([
+            Instruction(Opcode.PUSH, (0,)),
+            Instruction(Opcode.DEC),
+            Instruction(Opcode.HALT),
+        ])
+        assert ex.state.peek(0) == -1
 
 class TestComparison:
     """Tests for comparison opcodes."""

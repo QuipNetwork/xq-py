@@ -99,17 +99,34 @@ class Executor:
             Opcode.POP: self._runner_POP,
             Opcode.DUPL: self._runner_DUPL,
             Opcode.SWAP: self._runner_SWAP,
+            Opcode.SCLR: self._runner_SCLR,
             Opcode.LOAD: self._runner_LOAD,
             Opcode.STOW: self._runner_STOW,
+            Opcode.DROP: self._runner_DROP,
             Opcode.INPUT: self._runner_INPUT,
             Opcode.OUTPUT: self._runner_OUTPUT,
+            # Load Constant
+            Opcode.LDC1: self._runner_LDC,
+            Opcode.LDC2: self._runner_LDC,
+            Opcode.LDC3: self._runner_LDC,
+            Opcode.LDC4: self._runner_LDC,
+            Opcode.LDC5: self._runner_LDC,
+            Opcode.LDC6: self._runner_LDC,
+            Opcode.LDC7: self._runner_LDC,
+            Opcode.LDC8: self._runner_LDC,
             # Arithmetic
             Opcode.ADD: self._runner_ADD,
             Opcode.SUB: self._runner_SUB,
             Opcode.MUL: self._runner_MUL,
             Opcode.DIV: self._runner_DIV,
             Opcode.MOD: self._runner_MOD,
+            Opcode.SQR: self._runner_SQR,
+            Opcode.ABS: self._runner_ABS,
             Opcode.NEG: self._runner_NEG,
+            Opcode.MIN: self._runner_MIN,
+            Opcode.MAX: self._runner_MAX,
+            Opcode.INC: self._runner_INC,
+            Opcode.DEC: self._runner_DEC,
             # Comparison
             Opcode.EQ: self._runner_EQ,
             Opcode.LT: self._runner_LT,
@@ -361,6 +378,10 @@ class Executor:
         self.state.push(a)
         self.state.push(b)
 
+    def _runner_SCLR(self, instr: Instruction) -> None:
+        """ SCLR: Clear entire stack. """
+        self.state.stack.clear()
+
     def _runner_LOAD(self, instr: Instruction) -> None:
         """ LOAD: Load register value onto stack. """
         reg = instr.operands[0]
@@ -372,6 +393,11 @@ class Executor:
         reg = instr.operands[0]
         value = self.state.pop()
         self.state.set_register(reg, value)
+
+    def _runner_DROP(self, instr: Instruction) -> None:
+        """ DROP: Clear register (reset to unset). """
+        reg = instr.operands[0]
+        self.state.clear_register(reg)
 
     def _runner_INPUT(self, instr: Instruction) -> None:
         """ INPUT: Load input slot into register. """
@@ -386,6 +412,11 @@ class Executor:
         slot = self.state.pop()
         value = self.state.get_register(reg)
         self.state.set_output(slot, value)
+
+    def _runner_LDC(self, instr: Instruction) -> None:
+        """ LDC1-8: Load N-byte constant (big-endian signed two's complement). """
+        value = int.from_bytes(bytes(instr.operands), byteorder="big", signed=True)
+        self.state.push(value)
 
     def _runner_ADD(self, instr: Instruction) -> None:
         """ ADD: push(pop() + pop()). """
@@ -420,6 +451,36 @@ class Executor:
         """ NEG: Negate top value. """
         value = self.state.pop()
         self.state.push(-value)
+
+    def _runner_SQR(self, instr: Instruction) -> None:
+        """ SQR: Square top value. """
+        value = self.state.pop()
+        self.state.push(value * value)
+
+    def _runner_ABS(self, instr: Instruction) -> None:
+        """ ABS: Absolute value. """
+        value = self.state.pop()
+        self.state.push(abs(value))
+
+    def _runner_MIN(self, instr: Instruction) -> None:
+        """ MIN: push(min(second, top)). """
+        b, a = self.state.pop_n(2)
+        self.state.push(min(a, b))
+
+    def _runner_MAX(self, instr: Instruction) -> None:
+        """ MAX: push(max(second, top)). """
+        b, a = self.state.pop_n(2)
+        self.state.push(max(a, b))
+
+    def _runner_INC(self, instr: Instruction) -> None:
+        """ INC: Increment top value. """
+        value = self.state.pop()
+        self.state.push(value + 1)
+
+    def _runner_DEC(self, instr: Instruction) -> None:
+        """ DEC: Decrement top value. """
+        value = self.state.pop()
+        self.state.push(value - 1)
 
     def _runner_EQ(self, instr: Instruction) -> None:
         """ EQ: push(1 if second == top else 0). """

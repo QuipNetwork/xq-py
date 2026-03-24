@@ -30,7 +30,7 @@ class Opcode(Enum):
 
     # === Opcode Table Begins ===
 
-    # Control flow (0x00-0x0F)
+    # Control Flow (0x00-0x09)
     NOP = OpcodeMeta(
         0x00, 0, 0,
         0, (),
@@ -72,54 +72,108 @@ class Opcode(Enum):
         "Start vec iteration: pop end_idx, start_idx → iterate vec[start:end]",
     )
     HALT = OpcodeMeta(
-        0x0F, 0, 0,
+        0x09, 0, 0,
         0, (),
         "Stop execution",
     )
 
-    # Stack & Register I/O (0x10-0x17)
-    PUSH = OpcodeMeta(
-        0x10, 0, 1,
-        1, (OperandType.IMMEDIATE,),
-        "Push immediate value onto stack",
-    )
-    POP = OpcodeMeta(
-        0x11, 1, 0,
-        0, (),
-        "Pop and discard top of stack",
-    )
-    DUPL = OpcodeMeta(
-        0x12, 1, 2,
-        0, (),
-        "Duplicate top of stack",
-    )
-    SWAP = OpcodeMeta(
-        0x13, 2, 2,
-        0, (),
-        "Swap top two stack values",
-    )
+    # Register Manipulation (0x0A-0x0F)
     LOAD = OpcodeMeta(
-        0x14, 0, 1,
+        0x0A, 0, 1,
         1, (OperandType.REGISTER,),
         "Load register value onto stack",
     )
     STOW = OpcodeMeta(
-        0x15, 1, 0,
+        0x0B, 1, 0,
         1, (OperandType.REGISTER,),
         "Store top of stack into register",
     )
+    DROP = OpcodeMeta(
+        0x0C, 0, 0,
+        1, (OperandType.REGISTER,),
+        "Clear register (reset to unset)",
+    )
     INPUT = OpcodeMeta(
-        0x16, 1, 0,
+        0x0E, 1, 0,
         1, (OperandType.REGISTER,),
         "Load input slot into register",
     )
     OUTPUT = OpcodeMeta(
-        0x17, 1, 0,
+        0x0F, 1, 0,
         1, (OperandType.REGISTER,),
         "Write register to output slot",
     )
 
-    # Arithmetic (0x20-0x25)
+    # Stack Manipulation — Load Constant (0x11-0x18)
+    LDC1 = OpcodeMeta(
+        0x11, 0, 1,
+        1, (OperandType.IMMEDIATE,),
+        "Load 1-byte constant onto stack",
+    )
+    LDC2 = OpcodeMeta(
+        0x12, 0, 1,
+        2, (OperandType.IMMEDIATE, OperandType.IMMEDIATE),
+        "Load 2-byte constant onto stack",
+    )
+    LDC3 = OpcodeMeta(
+        0x13, 0, 1,
+        3, (OperandType.IMMEDIATE, OperandType.IMMEDIATE, OperandType.IMMEDIATE),
+        "Load 3-byte constant onto stack",
+    )
+    LDC4 = OpcodeMeta(
+        0x14, 0, 1,
+        4, (OperandType.IMMEDIATE,) * 4,
+        "Load 4-byte constant onto stack",
+    )
+    LDC5 = OpcodeMeta(
+        0x15, 0, 1,
+        5, (OperandType.IMMEDIATE,) * 5,
+        "Load 5-byte constant onto stack",
+    )
+    LDC6 = OpcodeMeta(
+        0x16, 0, 1,
+        6, (OperandType.IMMEDIATE,) * 6,
+        "Load 6-byte constant onto stack",
+    )
+    LDC7 = OpcodeMeta(
+        0x17, 0, 1,
+        7, (OperandType.IMMEDIATE,) * 7,
+        "Load 7-byte constant onto stack",
+    )
+    LDC8 = OpcodeMeta(
+        0x18, 0, 1,
+        8, (OperandType.IMMEDIATE,) * 8,
+        "Load 8-byte constant onto stack",
+    )
+
+    # Stack Manipulation — Operations (0x1A-0x1E)
+    PUSH = OpcodeMeta(
+        0x1A, 0, 1,
+        1, (OperandType.IMMEDIATE,),
+        "Push immediate value onto stack",
+    )
+    POP = OpcodeMeta(
+        0x1B, 1, 0,
+        0, (),
+        "Pop and discard top of stack",
+    )
+    SWAP = OpcodeMeta(
+        0x1C, 2, 2,
+        0, (),
+        "Swap top two stack values",
+    )
+    DUPL = OpcodeMeta(
+        0x1D, 1, 2,
+        0, (),
+        "Duplicate top of stack",
+    )
+    SCLR = OpcodeMeta(
+        0x1E, 0, 0,
+        0, (),
+        "Clear entire stack",
+    )
+
+    # Arithmetic (0x20-0x2B)
     ADD = OpcodeMeta(
         0x20, 2, 1,
         0, (),
@@ -145,89 +199,119 @@ class Opcode(Enum):
         0, (),
         "Modulo: push(second % top)",
     )
-    NEG = OpcodeMeta(
+    SQR = OpcodeMeta(
         0x25, 1, 1,
+        0, (),
+        "Square: push(top * top)",
+    )
+    ABS = OpcodeMeta(
+        0x26, 1, 1,
+        0, (),
+        "Absolute value: push(|top|)",
+    )
+    NEG = OpcodeMeta(
+        0x27, 1, 1,
         0, (),
         "Negate top value",
     )
+    MIN = OpcodeMeta(
+        0x28, 2, 1,
+        0, (),
+        "Minimum: push(min(second, top))",
+    )
+    MAX = OpcodeMeta(
+        0x29, 2, 1,
+        0, (),
+        "Maximum: push(max(second, top))",
+    )
+    INC = OpcodeMeta(
+        0x2A, 1, 1,
+        0, (),
+        "Increment: push(top + 1)",
+    )
+    DEC = OpcodeMeta(
+        0x2B, 1, 1,
+        0, (),
+        "Decrement: push(top - 1)",
+    )
 
-    # Comparison (0x26-0x2A)
+    # Logical — Comparison (0x30-0x34)
     EQ = OpcodeMeta(
-        0x26, 2, 1,
+        0x30, 2, 1,
         0, (),
         "Equal: push(1 if second == top else 0)",
     )
     LT = OpcodeMeta(
-        0x27, 2, 1,
+        0x31, 2, 1,
         0, (),
         "Less than: push(1 if second < top else 0)",
     )
     GT = OpcodeMeta(
-        0x28, 2, 1,
+        0x32, 2, 1,
         0, (),
         "Greater than: push(1 if second > top else 0)",
     )
     LTE = OpcodeMeta(
-        0x29, 2, 1,
+        0x33, 2, 1,
         0, (),
         "Less or equal: push(1 if second <= top else 0)",
     )
     GTE = OpcodeMeta(
-        0x2A, 2, 1,
+        0x34, 2, 1,
         0, (),
         "Greater or equal: push(1 if second >= top else 0)",
     )
 
-    # Boolean (0x30-0x33)
+    # Logical — Boolean (0x36-0x39)
     NOT = OpcodeMeta(
-        0x30, 1, 1,
+        0x36, 1, 1,
         0, (),
         "Logical NOT: push(1 if top == 0 else 0)",
     )
     AND = OpcodeMeta(
-        0x31, 2, 1,
+        0x37, 2, 1,
         0, (),
         "Logical AND: push(1 if both non-zero else 0)",
     )
     OR = OpcodeMeta(
-        0x32, 2, 1,
+        0x38, 2, 1,
         0, (),
         "Logical OR: push(1 if either non-zero else 0)",
     )
     XOR = OpcodeMeta(
-        0x33, 2, 1,
+        0x39, 2, 1,
         0, (),
         "Logical XOR: push(1 if exactly one non-zero else 0)",
     )
 
-    # Bitwise (0x34-0x39)
+    # Logical — Bitwise (0x3A-0x3F)
     BAND = OpcodeMeta(
-        0x34, 2, 1,
+        0x3A, 2, 1,
         0, (),
         "Bitwise AND",
     )
     BOR = OpcodeMeta(
-        0x35, 2, 1,
+        0x3B, 2, 1,
         0, (),
         "Bitwise OR",
     )
     BXOR = OpcodeMeta(
-        0x36, 2, 1,
+        0x3C, 2, 1,
         0, (),
         "Bitwise XOR",
     )
     BNOT = OpcodeMeta(
-        0x37, 1, 1,
+        0x3D, 1, 1,
         0, (),
         "Bitwise NOT (complement)",
     )
     SHL = OpcodeMeta(
-        0x38, 2, 1,
+        0x3E, 2, 1,
         0, (),
         "Shift left: push(second << top)",
     )
     SHR = OpcodeMeta(
-        0x39, 2, 1,
+        0x3F, 2, 1,
         0, (),
         "Shift right: push(second >> top)",
     )
@@ -427,5 +511,5 @@ class Opcode(Enum):
         except KeyError:
             return None
 
-# Verify we have exactly 69 opcodes
-assert len(Opcode) == 69, f"Expected 69 opcodes, got {len(Opcode)}"
+# Verify we have exactly 85 opcodes
+assert len(Opcode) == 85, f"Expected 85 opcodes, got {len(Opcode)}"

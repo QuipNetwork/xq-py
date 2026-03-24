@@ -10,8 +10,8 @@ class TestOpcodeCount:
     """Tests for opcode count and completeness."""
 
     def test_total_opcode_count(self):
-        """Should have exactly 69 opcodes."""
-        assert len(Opcode) == 69
+        """Should have exactly 85 opcodes."""
+        assert len(Opcode) == 85
 
     def test_all_opcodes_have_metadata(self):
         """Every opcode must have valid metadata."""
@@ -28,8 +28,8 @@ class TestOpcodeCodeLookup:
     def test_from_code_valid(self):
         """from_code returns correct opcode for valid codes."""
         assert Opcode.from_code(0x00) == Opcode.NOP
-        assert Opcode.from_code(0x0F) == Opcode.HALT
-        assert Opcode.from_code(0x10) == Opcode.PUSH
+        assert Opcode.from_code(0x09) == Opcode.HALT
+        assert Opcode.from_code(0x1A) == Opcode.PUSH
         assert Opcode.from_code(0x20) == Opcode.ADD
 
     def test_from_code_invalid(self):
@@ -110,34 +110,45 @@ class TestOpcodeGroupRanges:
     """Tests for opcode code ranges by group."""
 
     def test_control_flow_range(self):
-        """Control flow opcodes in 0x00-0x0F range."""
+        """Control flow opcodes in 0x00-0x09 range."""
         control_ops = [Opcode.NOP, Opcode.TARGET, Opcode.JUMP, Opcode.JUMPI,
-                       Opcode.NEXT, Opcode.LVAL, Opcode.RANGE, Opcode.ITER, Opcode.HALT]
+                       Opcode.NEXT, Opcode.LVAL, Opcode.RANGE, Opcode.ITER,
+                       Opcode.HALT]
         for op in control_ops:
-            assert 0x00 <= op.code <= 0x0F, f"{op.name} not in control range"
+            assert 0x00 <= op.code <= 0x09, f"{op.name} not in control range"
 
-    def test_stack_register_range(self):
-        """Stack/register opcodes in 0x10-0x1F range."""
-        stack_ops = [Opcode.PUSH, Opcode.POP, Opcode.DUPL, Opcode.SWAP,
-                     Opcode.LOAD, Opcode.STOW, Opcode.INPUT, Opcode.OUTPUT]
+    def test_register_manip_range(self):
+        """Register manipulation opcodes in 0x0A-0x0F range."""
+        reg_ops = [Opcode.LOAD, Opcode.STOW, Opcode.DROP,
+                   Opcode.INPUT, Opcode.OUTPUT]
+        for op in reg_ops:
+            assert 0x0A <= op.code <= 0x0F, f"{op.name} not in register range"
+
+    def test_stack_manip_range(self):
+        """Stack manipulation opcodes in 0x11-0x1E range."""
+        stack_ops = [Opcode.LDC1, Opcode.LDC2, Opcode.LDC3, Opcode.LDC4,
+                     Opcode.LDC5, Opcode.LDC6, Opcode.LDC7, Opcode.LDC8,
+                     Opcode.PUSH, Opcode.POP, Opcode.SWAP, Opcode.DUPL,
+                     Opcode.SCLR]
         for op in stack_ops:
-            assert 0x10 <= op.code <= 0x1F, f"{op.name} not in stack/reg range"
+            assert 0x11 <= op.code <= 0x1E, f"{op.name} not in stack range"
 
     def test_arithmetic_range(self):
-        """Arithmetic opcodes in 0x20-0x2A range."""
+        """Arithmetic opcodes in 0x20-0x2F range."""
         arith_ops = [Opcode.ADD, Opcode.SUB, Opcode.MUL, Opcode.DIV,
-                     Opcode.MOD, Opcode.NEG, Opcode.EQ, Opcode.LT,
-                     Opcode.GT, Opcode.LTE, Opcode.GTE]
+                     Opcode.MOD, Opcode.SQR, Opcode.ABS, Opcode.NEG,
+                     Opcode.MIN, Opcode.MAX, Opcode.INC, Opcode.DEC]
         for op in arith_ops:
             assert 0x20 <= op.code <= 0x2F, f"{op.name} not in arithmetic range"
 
-    def test_boolean_bitwise_range(self):
-        """Boolean/bitwise opcodes in 0x30-0x3F range."""
-        bool_ops = [Opcode.NOT, Opcode.AND, Opcode.OR, Opcode.XOR,
-                    Opcode.BAND, Opcode.BOR, Opcode.BXOR, Opcode.BNOT,
-                    Opcode.SHL, Opcode.SHR]
-        for op in bool_ops:
-            assert 0x30 <= op.code <= 0x3F, f"{op.name} not in bool/bitwise range"
+    def test_logical_range(self):
+        """Logical opcodes (comparison, boolean, bitwise) in 0x30-0x3F range."""
+        logical_ops = [Opcode.EQ, Opcode.LT, Opcode.GT, Opcode.LTE, Opcode.GTE,
+                       Opcode.NOT, Opcode.AND, Opcode.OR, Opcode.XOR,
+                       Opcode.BAND, Opcode.BOR, Opcode.BXOR, Opcode.BNOT,
+                       Opcode.SHL, Opcode.SHR]
+        for op in logical_ops:
+            assert 0x30 <= op.code <= 0x3F, f"{op.name} not in logical range"
 
     def test_allocator_range(self):
         """Allocator opcodes in 0x40-0x4F range."""

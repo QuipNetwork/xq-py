@@ -80,7 +80,7 @@ Programs execute independently with no shared state. Communication occurs only t
 
 ---
 
-## Instruction Set (68 opcodes)
+## Instruction Set (85 opcodes)
 
 ### Control Flow
 
@@ -94,20 +94,40 @@ Programs execute independently with no shared state. Communication occurs only t
 | 0x05 | `LVAL` | `<reg>` | — | Copy current loop value to register |
 | 0x06 | `RANGE` | — | pop count, start | Start range loop: iterate [start, start+count) |
 | 0x07 | `ITER` | `<reg>` | pop end_idx, start_idx | Start vec iteration: iterate vec[start:end] |
-| 0x0F | `HALT` | — | — | Stop execution |
+| 0x09 | `HALT` | — | — | Stop execution |
 
-### Stack & Register I/O
+### Register Manipulation
 
 | Code | Opcode | Operands | Stack | Description |
 | ------ | -------- | ---------- | ------- | ------------- |
-| 0x10 | `PUSH` | `<int>` | → push value | Push literal onto stack |
-| 0x11 | `POP` | — | pop | Discard top of stack |
-| 0x12 | `DUPL` | — | peek → push copy | Duplicate top of stack |
-| 0x13 | `SWAP` | — | pop b, a → push a, b | Swap top two elements |
-| 0x14 | `LOAD` | `<reg>` | → push reg[n] | Push int register value onto stack |
-| 0x15 | `STOW` | `<reg>` | pop → reg[n] | Pop stack into int register |
-| 0x16 | `INPUT` | `<reg>` | pop slot → reg[n] | Load calldata slot into register |
-| 0x17 | `OUTPUT` | `<reg>` | pop slot | Write register to output slot |
+| 0x0A | `LOAD` | `<reg>` | → push reg[n] | Push int register value onto stack |
+| 0x0B | `STOW` | `<reg>` | pop → reg[n] | Pop stack into int register |
+| 0x0C | `DROP` | `<reg>` | — | Clear register (reset to unset) |
+| 0x0E | `INPUT` | `<reg>` | pop slot → reg[n] | Load calldata slot into register |
+| 0x0F | `OUTPUT` | `<reg>` | pop slot | Write register to output slot |
+
+### Load Constant
+
+| Code | Opcode | Operands | Stack | Description |
+| ------ | -------- | ---------- | ------- | ------------- |
+| 0x11 | `LDC1` | 1 × `<int>` | → push value | Load 1-byte constant |
+| 0x12 | `LDC2` | 2 × `<int>` | → push value | Load 2-byte constant |
+| 0x13 | `LDC3` | 3 × `<int>` | → push value | Load 3-byte constant |
+| 0x14 | `LDC4` | 4 × `<int>` | → push value | Load 4-byte constant |
+| 0x15 | `LDC5` | 5 × `<int>` | → push value | Load 5-byte constant |
+| 0x16 | `LDC6` | 6 × `<int>` | → push value | Load 6-byte constant |
+| 0x17 | `LDC7` | 7 × `<int>` | → push value | Load 7-byte constant |
+| 0x18 | `LDC8` | 8 × `<int>` | → push value | Load 8-byte constant |
+
+### Stack Manipulation
+
+| Code | Opcode | Operands | Stack | Description |
+| ------ | -------- | ---------- | ------- | ------------- |
+| 0x1A | `PUSH` | `<int>` | → push value | Push literal onto stack |
+| 0x1B | `POP` | — | pop | Discard top of stack |
+| 0x1C | `SWAP` | — | pop b, a → push a, b | Swap top two elements |
+| 0x1D | `DUPL` | — | peek → push copy | Duplicate top of stack |
+| 0x1E | `SCLR` | — | clear all | Empty entire stack |
 
 ### Arithmetic
 
@@ -118,37 +138,43 @@ Programs execute independently with no shared state. Communication occurs only t
 | 0x22 | `MUL` | — | pop b, a → push a×b | Multiply |
 | 0x23 | `DIV` | — | pop b, a → push a/b | Integer divide |
 | 0x24 | `MOD` | — | pop b, a → push a%b | Modulo |
-| 0x25 | `NEG` | — | pop a → push −a | Negate |
+| 0x25 | `SQR` | — | pop a → push a×a | Square |
+| 0x26 | `ABS` | — | pop a → push \|a\| | Absolute value |
+| 0x27 | `NEG` | — | pop a → push −a | Negate |
+| 0x28 | `MIN` | — | pop b, a → push min(a,b) | Minimum |
+| 0x29 | `MAX` | — | pop b, a → push max(a,b) | Maximum |
+| 0x2A | `INC` | — | pop a → push a+1 | Increment |
+| 0x2B | `DEC` | — | pop a → push a−1 | Decrement |
 
-### Comparison
-
-| Code | Opcode | Operands | Stack | Description |
-| ------ | -------- | ---------- | ------- | ------------- |
-| 0x26 | `EQ` | — | pop b, a → push a==b | Equal |
-| 0x27 | `LT` | — | pop b, a → push a<b | Less than |
-| 0x28 | `GT` | — | pop b, a → push a>b | Greater than |
-| 0x29 | `LTE` | — | pop b, a → push a≤b | Less or equal |
-| 0x2A | `GTE` | — | pop b, a → push a≥b | Greater or equal |
-
-### Boolean
+### Logical — Comparison
 
 | Code | Opcode | Operands | Stack | Description |
 | ------ | -------- | ---------- | ------- | ------------- |
-| 0x30 | `NOT` | — | pop a → push !a | Logical NOT |
-| 0x31 | `AND` | — | pop b, a → push a&&b | Logical AND |
-| 0x32 | `OR` | — | pop b, a → push a\|\|b | Logical OR |
-| 0x33 | `XOR` | — | pop b, a → push a^b | Logical XOR |
+| 0x30 | `EQ` | — | pop b, a → push a==b | Equal |
+| 0x31 | `LT` | — | pop b, a → push a<b | Less than |
+| 0x32 | `GT` | — | pop b, a → push a>b | Greater than |
+| 0x33 | `LTE` | — | pop b, a → push a≤b | Less or equal |
+| 0x34 | `GTE` | — | pop b, a → push a≥b | Greater or equal |
 
-### Bitwise
+### Logical — Boolean
 
 | Code | Opcode | Operands | Stack | Description |
 | ------ | -------- | ---------- | ------- | ------------- |
-| 0x34 | `BAND` | — | pop b, a → push a&b | Bitwise AND |
-| 0x35 | `BOR` | — | pop b, a → push a\|b | Bitwise OR |
-| 0x36 | `BXOR` | — | pop b, a → push a⊕b | Bitwise XOR |
-| 0x37 | `BNOT` | — | pop a → push ~a | Bitwise NOT |
-| 0x38 | `SHL` | — | pop b, a → push a<<b | Shift left |
-| 0x39 | `SHR` | — | pop b, a → push a>>b | Shift right |
+| 0x36 | `NOT` | — | pop a → push !a | Logical NOT |
+| 0x37 | `AND` | — | pop b, a → push a&&b | Logical AND |
+| 0x38 | `OR` | — | pop b, a → push a\|\|b | Logical OR |
+| 0x39 | `XOR` | — | pop b, a → push a^b | Logical XOR |
+
+### Logical — Bitwise
+
+| Code | Opcode | Operands | Stack | Description |
+| ------ | -------- | ---------- | ------- | ------------- |
+| 0x3A | `BAND` | — | pop b, a → push a&b | Bitwise AND |
+| 0x3B | `BOR` | — | pop b, a → push a\|b | Bitwise OR |
+| 0x3C | `BXOR` | — | pop b, a → push a⊕b | Bitwise XOR |
+| 0x3D | `BNOT` | — | pop a → push ~a | Bitwise NOT |
+| 0x3E | `SHL` | — | pop b, a → push a<<b | Shift left |
+| 0x3F | `SHR` | — | pop b, a → push a>>b | Shift right |
 
 ### Allocators
 

@@ -158,6 +158,111 @@ class TestParserMultiLine:
         assert result[3].operands == (0,)
         assert result[4].opcode == Opcode.NEXT
 
+class TestParserLDCSugar:
+    """ LDC sugar expansion. """
+
+    def test_ldc_zero(self):
+        result = parse("LDC 0")
+        assert result[0].opcode == Opcode.LDC1
+        assert result[0].operands == (0,)
+
+    def test_ldc_small_positive(self):
+        result = parse("LDC 42")
+        assert result[0].opcode == Opcode.LDC1
+        assert result[0].operands == (42,)
+
+    def test_ldc_max_1byte(self):
+        result = parse("LDC 127")
+        assert result[0].opcode == Opcode.LDC1
+        assert result[0].operands == (127,)
+
+    def test_ldc_negative_one(self):
+        result = parse("LDC -1")
+        assert result[0].opcode == Opcode.LDC1
+        assert result[0].operands == (0xFF,)
+
+    def test_ldc_negative_two(self):
+        result = parse("LDC -2")
+        assert result[0].opcode == Opcode.LDC1
+        assert result[0].operands == (0xFE,)
+
+    def test_ldc_min_1byte(self):
+        result = parse("LDC -128")
+        assert result[0].opcode == Opcode.LDC1
+        assert result[0].operands == (0x80,)
+
+    def test_ldc_needs_2bytes_positive(self):
+        result = parse("LDC 128")
+        assert result[0].opcode == Opcode.LDC2
+        assert result[0].operands == (0x00, 0x80)
+
+    def test_ldc_256(self):
+        result = parse("LDC 256")
+        assert result[0].opcode == Opcode.LDC2
+        assert result[0].operands == (0x01, 0x00)
+
+    def test_ldc_needs_2bytes_negative(self):
+        result = parse("LDC -129")
+        assert result[0].opcode == Opcode.LDC2
+        assert result[0].operands == (0xFF, 0x7F)
+
+    def test_ldc_needs_3bytes(self):
+        result = parse("LDC 65536")
+        assert result[0].opcode == Opcode.LDC3
+        assert result[0].operands == (0x01, 0x00, 0x00)
+
+    def test_ldc_needs_4bytes(self):
+        result = parse("LDC 2147483647")
+        assert result[0].opcode == Opcode.LDC4
+        assert result[0].operands == (0x7F, 0xFF, 0xFF, 0xFF)
+
+    def test_ldc_needs_4bytes_negative(self):
+        result = parse("LDC -2147483648")
+        assert result[0].opcode == Opcode.LDC4
+        assert result[0].operands == (0x80, 0x00, 0x00, 0x00)
+
+    def test_ldc_case_insensitive(self):
+        result = parse("ldc 5")
+        assert result[0].opcode == Opcode.LDC1
+        assert result[0].operands == (5,)
+
+    def test_ldc_hex_value(self):
+        result = parse("LDC 0xFF")
+        assert result[0].opcode == Opcode.LDC2
+        assert result[0].operands == (0x00, 0xFF)
+
+    def test_ldc_negative_hex(self):
+        result = parse("LDC -0xFF")
+        assert result[0].opcode == Opcode.LDC2
+        assert result[0].operands == (0xFF, 0x01)
+
+    def test_ldc_no_operand(self):
+        with pytest.raises(ParseError, match="LDC expects 1 operand"):
+            parse("LDC")
+
+    def test_ldc_too_many_operands(self):
+        with pytest.raises(ParseError, match="LDC expects 1 operand"):
+            parse("LDC 1 2")
+
+    def test_ldc_invalid_value(self):
+        with pytest.raises(ParseError, match="Invalid integer"):
+            parse("LDC abc")
+
+    def test_ldc_out_of_range(self):
+        big = 2 ** 63
+        with pytest.raises(ParseError, match="out of range"):
+            parse(f"LDC {big}")
+
+    def test_desugared_ldc1_still_works(self):
+        result = parse("LDC1 42")
+        assert result[0].opcode == Opcode.LDC1
+        assert result[0].operands == (42,)
+
+    def test_desugared_ldc2_still_works(self):
+        result = parse("LDC2 0x01 0x00")
+        assert result[0].opcode == Opcode.LDC2
+        assert result[0].operands == (1, 0)
+
 class TestParserErrors:
     """ Parser error cases. """
 
@@ -312,6 +417,26 @@ class TestDisassembleInstruction:
         instr = Instruction(Opcode.ENERGY, (0, 1))
         assert disassemble_instruction(instr) == "ENERGY r0 r1"
 
+    def test_ldc1_sugar(self):
+        instr = Instruction(Opcode.LDC1, (42,))
+        assert disassemble_instruction(instr) == "LDC 0x2A"
+
+    def test_ldc1_negative(self):
+        instr = Instruction(Opcode.LDC1, (0xFF,))
+        assert disassemble_instruction(instr) == "LDC -1"
+
+    def test_ldc2_sugar(self):
+        instr = Instruction(Opcode.LDC2, (0x01, 0x00))
+        assert disassemble_instruction(instr) == "LDC 0x100"
+
+    def test_ldc4_sugar(self):
+        instr = Instruction(Opcode.LDC4, (0x7F, 0xFF, 0xFF, 0xFF))
+        assert disassemble_instruction(instr) == "LDC 0x7FFFFFFF"
+
+    def test_ldc2_negative(self):
+        instr = Instruction(Opcode.LDC2, (0xFF, 0xFE))
+        assert disassemble_instruction(instr) == "LDC -2"
+
 class TestDisassembleProgram:
     """ Full program disassembly. """
 
@@ -357,6 +482,25 @@ class TestRoundTrip:
 
     def test_allocator_round_trip(self):
         source = "PUSH 4\nBQMX r0\nHALT"
+        prog1 = assemble(source)
+        text = disassemble(prog1.program)
+        prog2 = assemble(text)
+        for i in range(len(prog1)):
+            assert prog1[i].opcode == prog2[i].opcode
+            assert prog1[i].operands == prog2[i].operands
+
+    def test_ldc_round_trip(self):
+        source = "LDC 256\nHALT"
+        prog1 = assemble(source)
+        text = disassemble(prog1.program)
+        prog2 = assemble(text)
+        assert len(prog1) == len(prog2)
+        for i in range(len(prog1)):
+            assert prog1[i].opcode == prog2[i].opcode
+            assert prog1[i].operands == prog2[i].operands
+
+    def test_ldc_negative_round_trip(self):
+        source = "LDC -1\nHALT"
         prog1 = assemble(source)
         text = disassemble(prog1.program)
         prog2 = assemble(text)
@@ -425,3 +569,19 @@ class TestAssembleAndExecute:
         ex = Executor()
         ex.execute(prog.program)
         assert ex.state.get_register(0) == 42
+
+    def test_ldc_execute(self):
+        from xqvm.core.executor import Executor
+        source = "LDC 1000\nHALT"
+        prog = assemble(source)
+        ex = Executor()
+        ex.execute(prog.program)
+        assert ex.state.peek(0) == 1000
+
+    def test_ldc_negative_execute(self):
+        from xqvm.core.executor import Executor
+        source = "LDC -500\nHALT"
+        prog = assemble(source)
+        ex = Executor()
+        ex.execute(prog.program)
+        assert ex.state.peek(0) == -500

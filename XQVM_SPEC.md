@@ -262,6 +262,17 @@ TARGET .0
 HALT
 ```
 
+### `LDC` Sugar
+
+The assembler accepts `LDC <value>` as syntactic sugar for the `LDC1`–`LDC8` family. The assembler parses the signed integer, selects the smallest `LDCn` opcode that fits, and encodes the value as big-endian signed two's complement byte operands. The desugared forms (`LDC1 0xFF`, `LDC2 0x01 0x00`, etc.) remain valid.
+
+```assembly
+LDC 42            # → LDC1 42
+LDC -1            # → LDC1 0xFF
+LDC 256           # → LDC2 0x01 0x00
+LDC 2147483647    # → LDC4 0x7F 0xFF 0xFF 0xFF
+```
+
 ---
 
 ## Control Flow Details

@@ -4,8 +4,13 @@ XQVM Disassembler: Convert instruction lists back to readable assembly text.
 
 from __future__ import annotations
 
-from xqvm.core.opcodes import OperandType
+from xqvm.core.opcodes import Opcode, OperandType
 from xqvm.core.program import Instruction, Program
+
+_LDC_OPCODES = frozenset({
+    Opcode.LDC1, Opcode.LDC2, Opcode.LDC3, Opcode.LDC4,
+    Opcode.LDC5, Opcode.LDC6, Opcode.LDC7, Opcode.LDC8,
+})
 
 def _format_operand(value: int, typ: OperandType) -> str:
     """ Format a single operand value as assembly text. """
@@ -22,6 +27,10 @@ def _format_operand(value: int, typ: OperandType) -> str:
 
 def disassemble_instruction(instr: Instruction) -> str:
     """ Convert a single Instruction to assembly text. """
+    if instr.opcode in _LDC_OPCODES:
+        value = int.from_bytes(bytes(instr.operands), byteorder="big", signed=True)
+        return f"LDC {_format_operand(value, OperandType.IMMEDIATE)}"
+
     meta = instr.opcode.meta
     parts = [instr.opcode.name]
 

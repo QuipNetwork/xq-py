@@ -7,13 +7,22 @@ from __future__ import annotations
 from xqvm.core.opcodes import Opcode, OperandType
 from xqvm.core.program import Instruction, Program
 
-_PUSH_OPCODES = frozenset({
-    Opcode.PUSH1, Opcode.PUSH2, Opcode.PUSH3, Opcode.PUSH4,
-    Opcode.PUSH5, Opcode.PUSH6, Opcode.PUSH7, Opcode.PUSH8,
-})
+_PUSH_OPCODES = frozenset(
+    {
+        Opcode.PUSH1,
+        Opcode.PUSH2,
+        Opcode.PUSH3,
+        Opcode.PUSH4,
+        Opcode.PUSH5,
+        Opcode.PUSH6,
+        Opcode.PUSH7,
+        Opcode.PUSH8,
+    }
+)
+
 
 def _format_operand(value: int, typ: OperandType) -> str:
-    """ Format a single operand value as assembly text. """
+    """Format a single operand value as assembly text."""
     if typ == OperandType.REGISTER:
         return f"r{value}"
     if typ == OperandType.TARGET:
@@ -25,8 +34,9 @@ def _format_operand(value: int, typ: OperandType) -> str:
         return f"0x{value:02X}"
     return str(value)
 
+
 def disassemble_instruction(instr: Instruction) -> str:
-    """ Convert a single Instruction to assembly text. """
+    """Convert a single Instruction to assembly text."""
     if instr.opcode in _PUSH_OPCODES:
         value = int.from_bytes(bytes(instr.operands), byteorder="big", signed=True)
         return f"PUSH {_format_operand(value, OperandType.IMMEDIATE)}"
@@ -39,8 +49,9 @@ def disassemble_instruction(instr: Instruction) -> str:
 
     return " ".join(parts)
 
+
 def disassemble(program: Program) -> str:
-    """ Convert a Program to assembly text. """
+    """Convert a Program to assembly text."""
     lines: list[str] = []
 
     for instr in program.instructions:

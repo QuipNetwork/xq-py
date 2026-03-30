@@ -2,9 +2,8 @@
 Tests for Opcode enum and metadata.
 """
 
-import pytest
-
 from xqvm.core.opcodes import Opcode, OpcodeMeta, OperandType
+
 
 class TestOpcodeCount:
     """Tests for opcode count and completeness."""
@@ -21,6 +20,7 @@ class TestOpcodeCount:
             assert isinstance(meta.code, int)
             assert isinstance(meta.description, str)
             assert len(meta.description) > 0
+
 
 class TestOpcodeCodeLookup:
     """Tests for from_code lookup."""
@@ -44,6 +44,7 @@ class TestOpcodeCodeLookup:
             result = Opcode.from_code(op.code)
             assert result == op
 
+
 class TestOpcodeNameLookup:
     """Tests for from_name lookup."""
 
@@ -65,6 +66,7 @@ class TestOpcodeNameLookup:
         assert Opcode.from_name("") is None
         assert Opcode.from_name("NOTANOP") is None
 
+
 class TestOpcodeMetadata:
     """Tests for opcode metadata validity."""
 
@@ -80,8 +82,7 @@ class TestOpcodeMetadata:
         for op in Opcode:
             meta = op.meta
             assert meta.operand_count == len(meta.operand_types), (
-                f"{op.name}: operand_count={meta.operand_count} "
-                f"but operand_types has {len(meta.operand_types)} items"
+                f"{op.name}: operand_count={meta.operand_count} but operand_types has {len(meta.operand_types)} items"
             )
 
     def test_operand_types_are_valid(self):
@@ -89,9 +90,8 @@ class TestOpcodeMetadata:
         for op in Opcode:
             meta = op.meta
             for t in meta.operand_types:
-                assert isinstance(t, OperandType), (
-                    f"{op.name} has invalid operand type: {t}"
-                )
+                assert isinstance(t, OperandType), f"{op.name} has invalid operand type: {t}"
+
 
 class TestCodeUniqueness:
     """Tests for opcode code uniqueness."""
@@ -106,73 +106,137 @@ class TestCodeUniqueness:
         names = [op.name for op in Opcode]
         assert len(names) == len(set(names)), "Duplicate opcode names found"
 
+
 class TestOpcodeGroupRanges:
     """Tests for opcode code ranges by group."""
 
     def test_control_flow_range(self):
         """Control flow opcodes in 0x00-0x09 range."""
-        control_ops = [Opcode.NOP, Opcode.TARGET, Opcode.JUMP, Opcode.JUMPI,
-                       Opcode.NEXT, Opcode.LVAL, Opcode.RANGE, Opcode.ITER,
-                       Opcode.HALT]
+        control_ops = [
+            Opcode.NOP,
+            Opcode.TARGET,
+            Opcode.JUMP,
+            Opcode.JUMPI,
+            Opcode.NEXT,
+            Opcode.LVAL,
+            Opcode.RANGE,
+            Opcode.ITER,
+            Opcode.HALT,
+        ]
         for op in control_ops:
             assert 0x00 <= op.code <= 0x09, f"{op.name} not in control range"
 
     def test_register_manip_range(self):
         """Register manipulation opcodes in 0x0A-0x0F range."""
-        reg_ops = [Opcode.LOAD, Opcode.STOW, Opcode.DROP,
-                   Opcode.INPUT, Opcode.OUTPUT]
+        reg_ops = [Opcode.LOAD, Opcode.STOW, Opcode.DROP, Opcode.INPUT, Opcode.OUTPUT]
         for op in reg_ops:
             assert 0x0A <= op.code <= 0x0F, f"{op.name} not in register range"
 
     def test_stack_manip_range(self):
         """Stack manipulation opcodes in 0x11-0x1E range."""
-        stack_ops = [Opcode.PUSH1, Opcode.PUSH2, Opcode.PUSH3, Opcode.PUSH4,
-                     Opcode.PUSH5, Opcode.PUSH6, Opcode.PUSH7, Opcode.PUSH8,
-                     Opcode.POP, Opcode.SCLR, Opcode.SWAP, Opcode.COPY]
+        stack_ops = [
+            Opcode.PUSH1,
+            Opcode.PUSH2,
+            Opcode.PUSH3,
+            Opcode.PUSH4,
+            Opcode.PUSH5,
+            Opcode.PUSH6,
+            Opcode.PUSH7,
+            Opcode.PUSH8,
+            Opcode.POP,
+            Opcode.SCLR,
+            Opcode.SWAP,
+            Opcode.COPY,
+        ]
         for op in stack_ops:
             assert 0x10 <= op.code <= 0x1C, f"{op.name} not in stack range"
 
     def test_arithmetic_range(self):
         """Arithmetic opcodes in 0x20-0x2F range."""
-        arith_ops = [Opcode.ADD, Opcode.SUB, Opcode.MUL, Opcode.DIV,
-                     Opcode.MOD, Opcode.SQR, Opcode.ABS, Opcode.NEG,
-                     Opcode.MIN, Opcode.MAX, Opcode.INC, Opcode.DEC]
+        arith_ops = [
+            Opcode.ADD,
+            Opcode.SUB,
+            Opcode.MUL,
+            Opcode.DIV,
+            Opcode.MOD,
+            Opcode.SQR,
+            Opcode.ABS,
+            Opcode.NEG,
+            Opcode.MIN,
+            Opcode.MAX,
+            Opcode.INC,
+            Opcode.DEC,
+        ]
         for op in arith_ops:
             assert 0x20 <= op.code <= 0x2F, f"{op.name} not in arithmetic range"
 
     def test_logical_range(self):
         """Logical opcodes (comparison, boolean, bitwise) in 0x30-0x3F range."""
-        logical_ops = [Opcode.EQ, Opcode.LT, Opcode.GT, Opcode.LTE, Opcode.GTE,
-                       Opcode.NOT, Opcode.AND, Opcode.OR, Opcode.XOR,
-                       Opcode.BAND, Opcode.BOR, Opcode.BXOR, Opcode.BNOT,
-                       Opcode.SHL, Opcode.SHR]
+        logical_ops = [
+            Opcode.EQ,
+            Opcode.LT,
+            Opcode.GT,
+            Opcode.LTE,
+            Opcode.GTE,
+            Opcode.NOT,
+            Opcode.AND,
+            Opcode.OR,
+            Opcode.XOR,
+            Opcode.BAND,
+            Opcode.BOR,
+            Opcode.BXOR,
+            Opcode.BNOT,
+            Opcode.SHL,
+            Opcode.SHR,
+        ]
         for op in logical_ops:
             assert 0x30 <= op.code <= 0x3F, f"{op.name} not in logical range"
 
     def test_allocator_range(self):
         """Allocator opcodes in 0x40-0x4F range."""
-        alloc_ops = [Opcode.BQMX, Opcode.SQMX, Opcode.XQMX,
-                     Opcode.BSMX, Opcode.SSMX, Opcode.XSMX,
-                     Opcode.VEC, Opcode.VECI, Opcode.VECX]
+        alloc_ops = [
+            Opcode.BQMX,
+            Opcode.SQMX,
+            Opcode.XQMX,
+            Opcode.BSMX,
+            Opcode.SSMX,
+            Opcode.XSMX,
+            Opcode.VEC,
+            Opcode.VECI,
+            Opcode.VECX,
+        ]
         for op in alloc_ops:
             assert 0x40 <= op.code <= 0x4F, f"{op.name} not in allocator range"
 
     def test_vector_access_range(self):
         """Vector access opcodes in 0x50-0x5F range."""
-        vec_ops = [Opcode.VECPUSH, Opcode.VECGET, Opcode.VECSET, Opcode.VECLEN,
-                   Opcode.IDXGRID, Opcode.IDXTRIU]
+        vec_ops = [Opcode.VECPUSH, Opcode.VECGET, Opcode.VECSET, Opcode.VECLEN, Opcode.IDXGRID, Opcode.IDXTRIU]
         for op in vec_ops:
             assert 0x50 <= op.code <= 0x5F, f"{op.name} not in vector range"
 
     def test_xqmx_range(self):
         """XQMX opcodes in 0x60-0x7F range."""
-        xqmx_ops = [Opcode.GETLINE, Opcode.SETLINE, Opcode.ADDLINE,
-                    Opcode.GETQUAD, Opcode.SETQUAD, Opcode.ADDQUAD,
-                    Opcode.RESIZE, Opcode.ROWFIND, Opcode.COLFIND,
-                    Opcode.ROWSUM, Opcode.COLSUM,
-                    Opcode.ONEHOTR, Opcode.ONEHOTC, Opcode.EXCLUDE, Opcode.IMPLIES, Opcode.ENERGY]
+        xqmx_ops = [
+            Opcode.GETLINE,
+            Opcode.SETLINE,
+            Opcode.ADDLINE,
+            Opcode.GETQUAD,
+            Opcode.SETQUAD,
+            Opcode.ADDQUAD,
+            Opcode.RESIZE,
+            Opcode.ROWFIND,
+            Opcode.COLFIND,
+            Opcode.ROWSUM,
+            Opcode.COLSUM,
+            Opcode.ONEHOTR,
+            Opcode.ONEHOTC,
+            Opcode.EXCLUDE,
+            Opcode.IMPLIES,
+            Opcode.ENERGY,
+        ]
         for op in xqmx_ops:
             assert 0x60 <= op.code <= 0x7F, f"{op.name} not in XQMX range"
+
 
 class TestSpecificOpcodeMetadata:
     """Tests for specific opcode metadata values."""
@@ -227,6 +291,7 @@ class TestSpecificOpcodeMetadata:
         assert meta.operand_count == 1
         assert meta.operand_types == (OperandType.TARGET,)
 
+
 class TestOpcodeCodeProperty:
     """Tests for opcode .code property."""
 
@@ -239,6 +304,7 @@ class TestOpcodeCodeProperty:
         """code property equals meta.code."""
         for op in Opcode:
             assert op.code == op.meta.code
+
 
 class TestOperandType:
     """Tests for OperandType enum."""

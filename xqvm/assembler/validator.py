@@ -10,14 +10,16 @@ from __future__ import annotations
 from xqvm.core.opcodes import Opcode, OperandType
 from xqvm.core.program import Instruction
 
+
 class ValidationError(Exception):
-    """ Raised when static validation fails. """
+    """Raised when static validation fails."""
 
     def __init__(self, message: str, line: int = 0):
         self.line = line
 
         prefix = f"Line {line}: " if line else ""
         super().__init__(f"{prefix}{message}")
+
 
 def validate(instructions: list[Instruction]) -> None:
     """
@@ -36,9 +38,7 @@ def validate(instructions: list[Instruction]) -> None:
         if instr.opcode == Opcode.TARGET:
             target_id = instr.operands[0]
             if target_id in defined_targets:
-                raise ValidationError(
-                    f"Duplicate target .{target_id}", instr.line
-                )
+                raise ValidationError(f"Duplicate target .{target_id}", instr.line)
             defined_targets.add(target_id)
 
     # Validate each instruction
@@ -48,8 +48,7 @@ def validate(instructions: list[Instruction]) -> None:
         # Operand count
         if len(instr.operands) != meta.operand_count:
             raise ValidationError(
-                f"{instr.opcode.name} expects {meta.operand_count} operand(s), "
-                f"got {len(instr.operands)}",
+                f"{instr.opcode.name} expects {meta.operand_count} operand(s), got {len(instr.operands)}",
                 instr.line,
             )
 
@@ -63,6 +62,4 @@ def validate(instructions: list[Instruction]) -> None:
 
             if typ == OperandType.TARGET and instr.opcode in (Opcode.JUMP, Opcode.JUMPI):
                 if val not in defined_targets:
-                    raise ValidationError(
-                        f"Undefined target .{val}", instr.line
-                    )
+                    raise ValidationError(f"Undefined target .{val}", instr.line)

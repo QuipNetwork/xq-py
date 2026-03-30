@@ -11,8 +11,9 @@ from __future__ import annotations
 from xqvm.core.opcodes import Opcode, OperandType
 from xqvm.core.program import Instruction
 
+
 class ParseError(Exception):
-    """ Raised when assembly source contains invalid syntax. """
+    """Raised when assembly source contains invalid syntax."""
 
     def __init__(self, message: str, line: int = 0):
         self.line = line
@@ -20,15 +21,17 @@ class ParseError(Exception):
         prefix = f"Line {line}: " if line else ""
         super().__init__(f"{prefix}{message}")
 
+
 def _strip_comment(text: str) -> str:
-    """ Remove inline comment from a line. """
+    """Remove inline comment from a line."""
     idx = text.find("#")
     if idx == -1:
         return text
     return text[:idx]
 
+
 def _parse_operand(token: str, expected_type: OperandType, line: int) -> int:
-    """ Parse a single operand token into an integer value. """
+    """Parse a single operand token into an integer value."""
     if expected_type == OperandType.REGISTER:
         if not token.startswith("r"):
             raise ParseError(f"Expected register (rN), got '{token}'", line)
@@ -61,8 +64,9 @@ def _parse_operand(token: str, expected_type: OperandType, line: int) -> int:
     except ValueError:
         raise ParseError(f"Invalid integer literal '{token}'", line)
 
+
 def _push_byte_count(value: int) -> int:
-    """ Compute the minimum byte count to represent a signed integer. """
+    """Compute the minimum byte count to represent a signed integer."""
     for n in range(1, 9):
         lo = -(1 << (8 * n - 1))
         hi = (1 << (8 * n - 1)) - 1
@@ -70,8 +74,10 @@ def _push_byte_count(value: int) -> int:
             return n
     return 8
 
-_PUSH_MIN = -(2 ** 63)
-_PUSH_MAX = 2 ** 63 - 1
+
+_PUSH_MIN = -(2**63)
+_PUSH_MAX = 2**63 - 1
+
 
 def _expand_push(
     operand_tokens: list[str],
@@ -84,9 +90,7 @@ def _expand_push(
     and bytes are big-endian signed two's complement.
     """
     if len(operand_tokens) != 1:
-        raise ParseError(
-            f"PUSH expects 1 operand, got {len(operand_tokens)}", line_num
-        )
+        raise ParseError(f"PUSH expects 1 operand, got {len(operand_tokens)}", line_num)
 
     token = operand_tokens[0]
 
@@ -111,6 +115,7 @@ def _expand_push(
     byte_tokens = [str(b) for b in encoded]
 
     return (f"PUSH{n}", byte_tokens)
+
 
 def _tokenize(source: str) -> list[tuple[str, list[str], int]]:
     """
@@ -137,6 +142,7 @@ def _tokenize(source: str) -> list[tuple[str, list[str], int]]:
 
     return tokens
 
+
 def parse(source: str) -> list[Instruction]:
     """
     Parse assembly source text into a list of Instructions.
@@ -160,10 +166,7 @@ def parse(source: str) -> list[Instruction]:
                 line_num,
             )
 
-        operands = tuple(
-            _parse_operand(tok, typ, line_num)
-            for tok, typ in zip(operand_tokens, meta.operand_types)
-        )
+        operands = tuple(_parse_operand(tok, typ, line_num) for tok, typ in zip(operand_tokens, meta.operand_types))
 
         instructions.append(Instruction(opcode, operands, line_num))
 

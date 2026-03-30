@@ -7,36 +7,34 @@ for XQMX models using different optimization strategies.
 
 from __future__ import annotations
 
-import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
-from xqvm.core.xqmx import XQMX, XQMXMode, XQMXDomain
+from xqvm.core.xqmx import XQMX, XQMXDomain, XQMXMode
+
 
 @dataclass(frozen=True)
 class SolverResult:
-    """ Result from a solver backend. """
+    """Result from a solver backend."""
+
     sample: XQMX
     energy: float
     timing: float
     metadata: dict[str, Any] = field(default_factory=dict)
 
+
 class Backend(ABC):
-    """ Abstract solver backend for XQMX quadratic models. """
+    """Abstract solver backend for XQMX quadratic models."""
 
     @abstractmethod
     def solve(self, model: XQMX, **kwargs: Any) -> SolverResult:
-        """ Solve a quadratic model, returning the best solution found. """
+        """Solve a quadratic model, returning the best solution found."""
         ...
 
     def _validate_model(self, model: XQMX) -> None:
-        """ Validate that the model is solvable. """
+        """Validate that the model is solvable."""
         if model.mode != XQMXMode.MODEL:
-            raise ValueError(
-                f"Expected MODEL mode, got {model.mode.name}"
-            )
+            raise ValueError(f"Expected MODEL mode, got {model.mode.name}")
         if model.domain not in (XQMXDomain.BINARY, XQMXDomain.SPIN):
-            raise ValueError(
-                f"Unsupported domain for solving: {model.domain.name}"
-            )
+            raise ValueError(f"Unsupported domain for solving: {model.domain.name}")

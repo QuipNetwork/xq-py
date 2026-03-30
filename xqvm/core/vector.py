@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+
 @dataclass
 class VecElem:
     """
@@ -20,6 +21,7 @@ class VecElem:
 
     UNSET is only valid as innermost type.
     """
+
     kind: str  # "int" | "xqmx" | "vec" | "unset"
     inner: VecElem | None = None  # Required if kind="vec"
 
@@ -30,7 +32,7 @@ class VecElem:
             raise ValueError(f"{self.kind} type cannot have inner type")
 
     def is_unset(self) -> bool:
-        """ Check if this type or any nested type is unset. """
+        """Check if this type or any nested type is unset."""
         if self.kind == "unset":
             return True
         return self.inner.is_unset() if self.inner else False
@@ -39,6 +41,7 @@ class VecElem:
         if self.kind == "vec":
             return f"vec<{self.inner}>"
         return self.kind
+
 
 @dataclass
 class Vec:
@@ -49,6 +52,7 @@ class Vec:
     It tracks both length (current elements) and capacity (allocated space).
     Type is inferred on first push, or set explicitly via VECI/VECX opcodes.
     """
+
     element_type: VecElem = field(default_factory=lambda: VecElem("unset"))
     _elements: list[Any] = field(default_factory=list)
     _capacity: int = 0
@@ -59,7 +63,7 @@ class Vec:
 
     @classmethod
     def with_capacity(cls, capacity: int, element_type: VecElem | None = None) -> Vec:
-        """ Create an empty Vec with pre-allocated capacity and optional type. """
+        """Create an empty Vec with pre-allocated capacity and optional type."""
         vec = cls()
         vec._capacity = capacity
         if element_type is not None:
@@ -68,7 +72,7 @@ class Vec:
 
     @classmethod
     def from_list(cls, elements: list[Any]) -> Vec:
-        """ Create a Vec from a list of elements. Type inferred from first element. """
+        """Create a Vec from a list of elements. Type inferred from first element."""
         vec = cls(_elements=list(elements), _capacity=len(elements))
         if elements:
             vec.element_type = vec._infer_type(elements[0])
@@ -76,16 +80,16 @@ class Vec:
 
     @property
     def length(self) -> int:
-        """ Current number of elements. """
+        """Current number of elements."""
         return len(self._elements)
 
     @property
     def capacity(self) -> int:
-        """ Allocated capacity. """
+        """Allocated capacity."""
         return self._capacity
 
     def push(self, element: Any) -> None:
-        """ Append an element to the vector. Infers type on first push. """
+        """Append an element to the vector. Infers type on first push."""
         if self.element_type.kind == "unset":
             self.element_type = self._infer_type(element)
         else:
@@ -96,20 +100,20 @@ class Vec:
             self._capacity = len(self._elements)
 
     def get(self, index: int) -> Any:
-        """ Get element at index. Raises IndexError if out of bounds. """
+        """Get element at index. Raises IndexError if out of bounds."""
         if index < 0 or index >= len(self._elements):
             raise IndexError(f"Vec index {index} out of range [0, {len(self._elements)})")
         return self._elements[index]
 
     def set(self, index: int, value: Any) -> None:
-        """ Set element at index. Raises IndexError if out of bounds. """
+        """Set element at index. Raises IndexError if out of bounds."""
         if index < 0 or index >= len(self._elements):
             raise IndexError(f"Vec index {index} out of range [0, {len(self._elements)})")
         self._validate_element(value)
         self._elements[index] = value
 
     def _infer_type(self, element: Any) -> VecElem:
-        """ Infer the VecElem type from an element. """
+        """Infer the VecElem type from an element."""
         # Import here to avoid circular import
         from .xqmx import XQMX
 
@@ -123,13 +127,13 @@ class Vec:
             raise TypeError(f"Cannot store {type(element).__name__} in vec")
 
     def _validate_element(self, element: Any) -> None:
-        """ Validate that an element matches the vec's type. """
+        """Validate that an element matches the vec's type."""
         inferred = self._infer_type(element)
         if not self._types_compatible(self.element_type, inferred):
             raise TypeError(f"{self.element_type} cannot hold {inferred}")
 
     def _types_compatible(self, expected: VecElem, actual: VecElem) -> bool:
-        """ Check if actual type is compatible with expected type. """
+        """Check if actual type is compatible with expected type."""
         if expected.kind == "unset":
             return True
         if expected.kind != actual.kind:

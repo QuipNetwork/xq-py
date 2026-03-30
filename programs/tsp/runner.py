@@ -10,15 +10,14 @@ from __future__ import annotations
 import random
 import time
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
-
-from xqvm.assembler import assemble, AssembledProgram
-from xqvm.core.executor import Executor
-from xqvm.core.vector import Vec
-from xqvm.core.xqmx import XQMX, triu
+from typing import TYPE_CHECKING, Any
 
 from tools.tracer import Tracer
 from tools.visualizer import render_info, render_matrix
+from xqvm.assembler import AssembledProgram, assemble
+from xqvm.core.executor import Executor
+from xqvm.core.vector import Vec
+from xqvm.core.xqmx import XQMX, triu
 
 if TYPE_CHECKING:
     from xqsa import Backend
@@ -26,19 +25,22 @@ if TYPE_CHECKING:
 TSP_DIR = Path(__file__).parent
 DEFAULT_SOURCE = "asm"
 
+
 def load_program(name: str, source_dir: Path | None = None) -> AssembledProgram:
-    """ Load and assemble a .xqasm file from the given source directory. """
+    """Load and assemble a .xqasm file from the given source directory."""
     program_dir = source_dir or (TSP_DIR / DEFAULT_SOURCE)
     path = program_dir / f"{name}.xqasm"
     source = path.read_text()
     return assemble(source, name)
 
+
 def make_distance_vec(distances: list[int]) -> Vec:
-    """ Wrap a flat distance list as a Vec for the VM. """
+    """Wrap a flat distance list as a Vec for the VM."""
     v = Vec()
     for d in distances:
         v.push(d)
     return v
+
 
 def make_identity_sample(n: int) -> XQMX:
     """
@@ -51,17 +53,19 @@ def make_identity_sample(n: int) -> XQMX:
         sample.set_linear(i * n + i, 1)
     return sample
 
+
 def run_program(
     program: AssembledProgram,
     input_data: dict[int, Any],
     tracer: Tracer | None = None,
 ) -> tuple[Executor, float]:
-    """ Execute an assembled program, returning the executor and elapsed time. """
+    """Execute an assembled program, returning the executor and elapsed time."""
     ex = Executor(tracer=tracer)
     t0 = time.perf_counter()
     ex.execute(program.program, input_data)
     elapsed = time.perf_counter() - t0
     return ex, elapsed
+
 
 def run_pipeline(
     n: int,
@@ -137,7 +141,7 @@ def run_pipeline(
         print(f"\n{'=' * 50}")
         print(f"TSP N={n}")
         print(f"{'=' * 50}")
-        print(f"\n--- Distances ---")
+        print("\n--- Distances ---")
         header = "     " + "".join(f"{j:>5}" for j in range(n))
         print(header)
         for i in range(n):
@@ -148,16 +152,16 @@ def run_pipeline(
                 else:
                     row += f"{distances[triu(i, j)]:>5}"
             print(row)
-        print(f"\n--- Model ---")
+        print("\n--- Model ---")
         print(render_info(model))
         if show_matrix:
             print(render_matrix(model))
-        print(f"\n--- Results ---")
+        print("\n--- Results ---")
         print(f"Energy:         {energy}")
         print(f"Valid:          {valid} ({'PASS' if valid else 'FAIL'})")
         print(f"Tour:           {tour}")
         print(f"Tour distance:  {tour_dist}")
-        print(f"\n--- Timings ---")
+        print("\n--- Timings ---")
         print(f"Encoder:  {t_enc:.6f}s")
         if solver is not None:
             print(f"Solver:   {t_solve:.6f}s")
@@ -167,11 +171,14 @@ def run_pipeline(
 
     return results
 
+
 def benchmark(
-    sizes: list[int], seed: int = 42, source_dir: Path | None = None,
+    sizes: list[int],
+    seed: int = 42,
+    source_dir: Path | None = None,
     solver: Backend | None = None,
 ) -> list[dict[str, Any]]:
-    """ Run the TSP pipeline across multiple problem sizes and collect results. """
+    """Run the TSP pipeline across multiple problem sizes and collect results."""
     rng = random.Random(seed)
     all_results: list[dict[str, Any]] = []
 
@@ -182,8 +189,9 @@ def benchmark(
 
     return all_results
 
+
 def print_summary(all_results: list[dict[str, Any]]) -> None:
-    """ Print a summary table of benchmark results. """
+    """Print a summary table of benchmark results."""
     if not all_results:
         return
 
@@ -199,48 +207,66 @@ def print_summary(all_results: list[dict[str, Any]]) -> None:
     for r in all_results:
         n = r["n"]
         print(
-            f"{n:>5}  {n*n:>7}  {r['model_linear']:>8}  {r['model_quadratic']:>8}  "
+            f"{n:>5}  {n * n:>7}  {r['model_linear']:>8}  {r['model_quadratic']:>8}  "
             f"{r['encoder_time']:>10.6f}  {r['verifier_time']:>10.6f}  "
             f"{r['decoder_time']:>10.6f}  {r['total_time']:>10.6f}  "
             f"{'Y' if r['valid'] else 'N':>5}"
         )
+
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="XQVM TSP Example")
     parser.add_argument(
-        "--bench", type=int, nargs="+", metavar="N",
+        "--bench",
+        type=int,
+        nargs="+",
+        metavar="N",
         help="Run benchmarks for given problem sizes (e.g. --bench 4 8 16)",
     )
     trace_group = parser.add_mutually_exclusive_group()
     trace_group.add_argument(
-        "--trace", action="store_const", const=2, dest="trace",
+        "--trace",
+        action="store_const",
+        const=2,
+        dest="trace",
         help="Trace execution with full detail (stack + register diffs)",
     )
     trace_group.add_argument(
-        "--trace-compact", action="store_const", const=1, dest="trace",
+        "--trace-compact",
+        action="store_const",
+        const=1,
+        dest="trace",
         help="Trace execution with compact one-line output",
     )
     parser.add_argument(
-        "--seed", type=int, default=42,
+        "--seed",
+        type=int,
+        default=42,
         help="Random seed (default: 42)",
     )
     parser.add_argument(
-        "--src", type=str, default=DEFAULT_SOURCE,
+        "--src",
+        type=str,
+        default=DEFAULT_SOURCE,
         choices=["asm", "cp"],
         help="Program source directory (default: asm)",
     )
     parser.add_argument(
-        "-n", type=int, default=5,
+        "-n",
+        type=int,
+        default=5,
         help="Problem size for single run (default: 5)",
     )
     parser.add_argument(
-        "--matrix", action="store_true",
+        "--matrix",
+        action="store_true",
         help="Print the full XQMX coefficient matrix",
     )
     parser.add_argument(
-        "--no-solve", action="store_true",
+        "--no-solve",
+        action="store_true",
         help="Disable solver and use a hardcoded sample instead",
     )
     args = parser.parse_args()
@@ -253,6 +279,7 @@ if __name__ == "__main__":
     sa_solver = None
     if not args.no_solve:
         from xqsa import NealBackend
+
         sa_solver = NealBackend(seed=args.seed)
 
     if args.bench:
@@ -262,4 +289,12 @@ if __name__ == "__main__":
         rng = random.Random(args.seed)
         n = args.n
         distances = [rng.randint(1, 100) for _ in range(n * (n - 1) // 2)]
-        run_pipeline(n, distances, verbose=True, trace_verbosity=args.trace, source_dir=source_dir, solver=sa_solver, show_matrix=args.matrix)
+        run_pipeline(
+            n,
+            distances,
+            verbose=True,
+            trace_verbosity=args.trace,
+            source_dir=source_dir,
+            solver=sa_solver,
+            show_matrix=args.matrix,
+        )

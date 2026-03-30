@@ -4,17 +4,18 @@ Tests for the XQVM assembler: parser, validator, program, and disassembler.
 
 import pytest
 
+from tools.disassembler import disassemble, disassemble_instruction
+from xqvm.assembler.parser import ParseError, parse
+from xqvm.assembler.program import assemble
+from xqvm.assembler.validator import ValidationError, validate
 from xqvm.core.opcodes import Opcode
 from xqvm.core.program import Instruction
-from xqvm.assembler.parser import parse, ParseError
-from xqvm.assembler.validator import validate, ValidationError
-from xqvm.assembler.program import assemble
-from tools.disassembler import disassemble, disassemble_instruction
 
 # === Parser Tests ===
 
+
 class TestParserBasic:
-    """ Basic parsing of valid assembly. """
+    """Basic parsing of valid assembly."""
 
     def test_empty_source(self):
         assert parse("") == []
@@ -87,8 +88,9 @@ class TestParserBasic:
         assert result[0].opcode == Opcode.ENERGY
         assert result[0].operands == (0, 1)
 
+
 class TestParserLineNumbers:
-    """ Line number tracking. """
+    """Line number tracking."""
 
     def test_line_numbers_simple(self):
         result = parse("NOP\nHALT")
@@ -105,8 +107,9 @@ class TestParserLineNumbers:
         assert result[0].line == 2
         assert result[1].line == 4
 
+
 class TestParserInlineComments:
-    """ Inline comment stripping. """
+    """Inline comment stripping."""
 
     def test_inline_comment(self):
         result = parse("PUSH 10 # push ten")
@@ -117,8 +120,9 @@ class TestParserInlineComments:
         assert len(result) == 1
         assert result[0].opcode == Opcode.NOP
 
+
 class TestParserCaseInsensitive:
-    """ Opcode name case handling. """
+    """Opcode name case handling."""
 
     def test_lowercase(self):
         result = parse("nop")
@@ -128,8 +132,9 @@ class TestParserCaseInsensitive:
         result = parse("Push 1")
         assert result[0].opcode == Opcode.PUSH1
 
+
 class TestParserMultiLine:
-    """ Multi-line programs. """
+    """Multi-line programs."""
 
     def test_simple_program(self):
         source = """
@@ -161,8 +166,9 @@ class TestParserMultiLine:
         assert result[3].operands == (0,)
         assert result[4].opcode == Opcode.NEXT
 
+
 class TestParserPushSugar:
-    """ PUSH sugar expansion. """
+    """PUSH sugar expansion."""
 
     def test_push_zero(self):
         result = parse("PUSH 0")
@@ -252,7 +258,7 @@ class TestParserPushSugar:
             parse("PUSH abc")
 
     def test_push_out_of_range(self):
-        big = 2 ** 63
+        big = 2**63
         with pytest.raises(ParseError, match="out of range"):
             parse(f"PUSH {big}")
 
@@ -266,8 +272,9 @@ class TestParserPushSugar:
         assert result[0].opcode == Opcode.PUSH2
         assert result[0].operands == (1, 0)
 
+
 class TestParserErrors:
-    """ Parser error cases. """
+    """Parser error cases."""
 
     def test_unknown_opcode(self):
         with pytest.raises(ParseError, match="Unknown opcode"):
@@ -310,10 +317,12 @@ class TestParserErrors:
             parse("NOP\nBOGUS")
         assert exc_info.value.line == 2
 
+
 # === Validator Tests ===
 
+
 class TestValidatorTargets:
-    """ Jump target validation. """
+    """Jump target validation."""
 
     def test_valid_targets(self):
         instructions = parse("TARGET .0\nJUMP .0\nHALT")
@@ -342,8 +351,9 @@ class TestValidatorTargets:
         instructions = parse("TARGET .5\nHALT")
         validate(instructions)  # Unused target is fine
 
+
 class TestValidatorOperands:
-    """ Operand validation. """
+    """Operand validation."""
 
     def test_valid_program(self):
         source = """
@@ -355,10 +365,12 @@ class TestValidatorOperands:
         instructions = parse(source)
         validate(instructions)  # Should not raise
 
+
 # === Assemble Tests ===
 
+
 class TestAssemble:
-    """ End-to-end assembly. """
+    """End-to-end assembly."""
 
     def test_assemble_simple(self):
         result = assemble("PUSH 1\nPUSH 2\nADD\nHALT", name="test")
@@ -387,10 +399,12 @@ class TestAssemble:
         with pytest.raises(ValidationError):
             assemble("JUMP .0\nHALT")
 
+
 # === Disassembler Tests ===
 
+
 class TestDisassembleInstruction:
-    """ Single instruction disassembly. """
+    """Single instruction disassembly."""
 
     def test_nop(self):
         instr = Instruction(Opcode.NOP)
@@ -436,28 +450,35 @@ class TestDisassembleInstruction:
         instr = Instruction(Opcode.PUSH2, (0xFF, 0xFE))
         assert disassemble_instruction(instr) == "PUSH -2"
 
+
 class TestDisassembleProgram:
-    """ Full program disassembly. """
+    """Full program disassembly."""
 
     def test_simple_program(self):
         from xqvm.core.program import Program
-        prog = Program([
-            Instruction(Opcode.PUSH1, (1,)),
-            Instruction(Opcode.PUSH1, (2,)),
-            Instruction(Opcode.ADD),
-            Instruction(Opcode.HALT),
-        ])
+
+        prog = Program(
+            [
+                Instruction(Opcode.PUSH1, (1,)),
+                Instruction(Opcode.PUSH1, (2,)),
+                Instruction(Opcode.ADD),
+                Instruction(Opcode.HALT),
+            ]
+        )
         text = disassemble(prog)
         assert text == "PUSH 1\nPUSH 2\nADD\nHALT"
 
     def test_empty_program(self):
         from xqvm.core.program import Program
+
         assert disassemble(Program()) == ""
+
 
 # === Round-Trip Tests ===
 
+
 class TestRoundTrip:
-    """ Assemble → disassemble → assemble round trips. """
+    """Assemble → disassemble → assemble round trips."""
 
     def test_arithmetic_round_trip(self):
         source = "PUSH 5\nPUSH 3\nADD\nHALT"
@@ -517,13 +538,16 @@ class TestRoundTrip:
             assert prog1[i].opcode == prog2[i].opcode
             assert prog1[i].operands == prog2[i].operands
 
+
 # === Integration: Assemble and Execute ===
 
+
 class TestAssembleAndExecute:
-    """ Assemble source and run through the executor. """
+    """Assemble source and run through the executor."""
 
     def test_add_two_numbers(self):
         from xqvm.core.executor import Executor
+
         source = "PUSH 3\nPUSH 7\nADD\nHALT"
         prog = assemble(source)
         ex = Executor()
@@ -532,6 +556,7 @@ class TestAssembleAndExecute:
 
     def test_loop_sum(self):
         from xqvm.core.executor import Executor
+
         source = """
         # Sum 0..4 → r1
         PUSH 0
@@ -554,6 +579,7 @@ class TestAssembleAndExecute:
 
     def test_forward_jump(self):
         from xqvm.core.executor import Executor
+
         source = """
         PUSH 42
         STOW r0
@@ -571,6 +597,7 @@ class TestAssembleAndExecute:
 
     def test_push_multibyte_execute(self):
         from xqvm.core.executor import Executor
+
         source = "PUSH 1000\nHALT"
         prog = assemble(source)
         ex = Executor()
@@ -579,6 +606,7 @@ class TestAssembleAndExecute:
 
     def test_push_negative_execute(self):
         from xqvm.core.executor import Executor
+
         source = "PUSH -500\nHALT"
         prog = assemble(source)
         ex = Executor()

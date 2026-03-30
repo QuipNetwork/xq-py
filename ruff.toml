@@ -1,0 +1,16 @@
+line-length = 120
+target-version = "py313"
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+]
+
+[lint.per-file-ignores]
+"tests/test_xqsa.py" = ["E402"]  # imports after pytest.importorskip
+
+[lint.isort]
+known-first-party = ["xqvm", "xqcp", "xqsa", "tools"]

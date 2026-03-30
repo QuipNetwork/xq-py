@@ -16,8 +16,9 @@ from xqvm.core import XQMXDomain
 
 OUTPUT_DIR = Path(__file__).parent
 
+
 def build() -> Problem:
-    """ Build the Max-Cut constraint program. """
+    """Build the Max-Cut constraint program."""
     problem = Problem("MaxCut")
 
     # --- Inputs ---
@@ -48,8 +49,9 @@ def build() -> Problem:
 
     return problem
 
+
 def compile_and_write() -> None:
-    """ Compile the Max-Cut program and write .xqasm files. """
+    """Compile the Max-Cut program and write .xqasm files."""
     problem = build()
     programs = problem.compile()
 
@@ -59,12 +61,15 @@ def compile_and_write() -> None:
 
     print(f"Wrote encoder.xqasm, verifier.xqasm, decoder.xqasm to {OUTPUT_DIR}")
 
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Compile Max-Cut XQCP program")
     parser.add_argument(
-        "--print", action="store_true", dest="print_asm",
+        "--print",
+        action="store_true",
+        dest="print_asm",
         help="Print generated assembly instead of writing files",
     )
     args = parser.parse_args()

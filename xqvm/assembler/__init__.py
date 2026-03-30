@@ -3,8 +3,8 @@ XQVM Assembler: Parse .xqasm text into executable programs.
 """
 
 from .parser import parse
+from .program import AssembledProgram, assemble
 from .validator import validate
-from .program import assemble, AssembledProgram
 
 __all__ = [
     "parse",

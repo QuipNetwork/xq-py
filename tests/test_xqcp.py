@@ -2,15 +2,16 @@
 Tests for the constraint programming DSL (xqvm.cp).
 """
 
-from xqcp import Problem, Types, CompiledPrograms, triu
+from xqcp import CompiledPrograms, Problem, Types, triu
 from xqvm.core import XQMXDomain
 
 # ---------------------------------------------------------------------------
 # Helper: build the TSP problem
 # ---------------------------------------------------------------------------
 
+
 def build_tsp_problem() -> Problem:
-    """ Build the reference TSP problem using the CP DSL. """
+    """Build the reference TSP problem using the CP DSL."""
     problem = Problem("TSP")
 
     num_cities = problem.input("num_cities", type=Types.Int)
@@ -29,10 +30,14 @@ def build_tsp_problem() -> Problem:
             with problem.range(0, num_cities) as position:
                 next_position = (position + 1) % num_cities
                 problem.model.add_quadratic(
-                    (city_i, position), (city_j, next_position), dist,
+                    (city_i, position),
+                    (city_j, next_position),
+                    dist,
                 )
                 problem.model.add_quadratic(
-                    (city_j, position), (city_i, next_position), dist,
+                    (city_j, position),
+                    (city_i, next_position),
+                    dist,
                 )
 
     with problem.range(0, num_cities) as city:
@@ -47,51 +52,60 @@ def build_tsp_problem() -> Problem:
 
     return problem
 
+
 # ---------------------------------------------------------------------------
 # Expression tests
 # ---------------------------------------------------------------------------
 
+
 class TestExpressions:
-    """ Test symbolic expression emission. """
+    """Test symbolic expression emission."""
 
     def test_literal(self) -> None:
         from xqcp import Literal
+
         lines: list[str] = []
         Literal(42).emit(lines, 0)
         assert lines == ["PUSH 42"]
 
     def test_literal_hex(self) -> None:
         from xqcp import Literal
+
         lines: list[str] = []
         Literal(100).emit(lines, 0)
         assert lines == ["PUSH 0x64"]
 
     def test_regload(self) -> None:
         from xqcp import RegLoad
+
         lines: list[str] = []
         RegLoad(3).emit(lines, 0)
         assert lines == ["LOAD r3"]
 
     def test_binop_add(self) -> None:
-        from xqcp import Literal, BinOp
+        from xqcp import BinOp, Literal
+
         lines: list[str] = []
         BinOp("ADD", Literal(3), Literal(2)).emit(lines, 0)
         assert lines == ["PUSH 3", "PUSH 2", "ADD"]
 
     def test_binop_add_inc(self) -> None:
-        from xqcp import Literal, BinOp, RegLoad
+        from xqcp import BinOp, Literal, RegLoad
+
         lines: list[str] = []
         BinOp("ADD", RegLoad(0), Literal(1)).emit(lines, 0)
         assert lines == ["LOAD r0", "INC"]
 
     def test_binop_sub_dec(self) -> None:
-        from xqcp import Literal, BinOp, RegLoad
+        from xqcp import BinOp, Literal, RegLoad
+
         lines: list[str] = []
         BinOp("SUB", RegLoad(0), Literal(1)).emit(lines, 0)
         assert lines == ["LOAD r0", "DEC"]
 
     def test_input_ref_arithmetic(self) -> None:
         from xqcp import InputRef
+
         n = InputRef(0, "n", Types.Int)
         expr = n - 1
         lines: list[str] = []
@@ -100,6 +114,7 @@ class TestExpressions:
 
     def test_loop_var_arithmetic(self) -> None:
         from xqcp import LoopVar
+
         v = LoopVar(5, "v5")
         expr = (v + 1) % LoopVar(0, "n")
         lines: list[str] = []
@@ -108,6 +123,7 @@ class TestExpressions:
 
     def test_triu_expr(self) -> None:
         from xqcp import LoopVar
+
         ci = LoopVar(10, "ci")
         cj = LoopVar(11, "cj")
         expr = triu(ci, cj)
@@ -117,6 +133,7 @@ class TestExpressions:
 
     def test_vecget_expr(self) -> None:
         from xqcp import InputRef, LoopVar
+
         v = InputRef(1, "distances", Types.Vec)
         idx = LoopVar(5, "i")
         expr = v.get(idx)
@@ -126,16 +143,19 @@ class TestExpressions:
 
     def test_indentation(self) -> None:
         from xqcp import Literal
+
         lines: list[str] = []
         Literal(1).emit(lines, 2)
         assert lines == ["    PUSH 1"]
+
 
 # ---------------------------------------------------------------------------
 # Compilation tests
 # ---------------------------------------------------------------------------
 
+
 class TestTSPCompilation:
-    """ Test TSP problem compilation. """
+    """Test TSP problem compilation."""
 
     def test_compiles_without_error(self) -> None:
         problem = build_tsp_problem()
@@ -147,6 +167,7 @@ class TestTSPCompilation:
 
     def test_encoder_assembles(self) -> None:
         from xqvm.assembler import assemble
+
         problem = build_tsp_problem()
         programs = problem.compile()
         prog = assemble(programs.encoder)
@@ -154,6 +175,7 @@ class TestTSPCompilation:
 
     def test_verifier_assembles(self) -> None:
         from xqvm.assembler import assemble
+
         problem = build_tsp_problem()
         programs = problem.compile()
         prog = assemble(programs.verifier)
@@ -161,6 +183,7 @@ class TestTSPCompilation:
 
     def test_decoder_assembles(self) -> None:
         from xqvm.assembler import assemble
+
         problem = build_tsp_problem()
         programs = problem.compile()
         prog = assemble(programs.decoder)
@@ -193,17 +216,25 @@ class TestTSPCompilation:
         assert "VECI" in programs.decoder
         assert "HALT" in programs.decoder
 
+
 # ---------------------------------------------------------------------------
 # Pipeline integration test
 # ---------------------------------------------------------------------------
 
+
 class TestTSPPipeline:
-    """ End-to-end pipeline test: compile, assemble, execute. """
+    """End-to-end pipeline test: compile, assemble, execute."""
 
     def test_full_pipeline_n3(self) -> None:
         from xqvm.assembler import assemble
         from xqvm.core import (
-            Executor, XQMX, XQMXMode, XQMXDomain as D, Vec, triu as triu_fn,
+            XQMX,
+            Executor,
+            Vec,
+            XQMXMode,
+        )
+        from xqvm.core import (
+            XQMXDomain as D,
         )
 
         problem = build_tsp_problem()
@@ -258,11 +289,18 @@ class TestTSPPipeline:
         assert tour_list == [0, 1, 2], f"Expected [0, 1, 2], got {tour_list}"
 
     def test_matches_handwritten_tsp(self) -> None:
-        """ Verify CP-generated programs produce identical results to hand-written. """
+        """Verify CP-generated programs produce identical results to hand-written."""
         import pathlib
+
         from xqvm.assembler import assemble
         from xqvm.core import (
-            Executor, XQMX, XQMXMode, XQMXDomain as D, Vec, triu as triu_fn,
+            XQMX,
+            Executor,
+            Vec,
+            XQMXMode,
+        )
+        from xqvm.core import (
+            XQMXDomain as D,
         )
 
         tsp_dir = pathlib.Path(__file__).parent.parent / "programs" / "tsp"
@@ -289,8 +327,11 @@ class TestTSPPipeline:
 
         # Identity sample
         sample = XQMX(
-            mode=XQMXMode.SAMPLE, domain=D.BINARY,
-            size=n * n, rows=n, cols=n,
+            mode=XQMXMode.SAMPLE,
+            domain=D.BINARY,
+            size=n * n,
+            rows=n,
+            cols=n,
         )
         for i in range(n):
             sample.linear[i * n + i] = 1
@@ -326,12 +367,14 @@ class TestTSPPipeline:
         cp_tour = cp_s.output[0]
         assert [hw_tour.get(i) for i in range(n)] == [cp_tour.get(i) for i in range(n)]
 
+
 # ---------------------------------------------------------------------------
 # Helper: build the Max-Cut problem
 # ---------------------------------------------------------------------------
 
+
 def build_maxcut_problem() -> Problem:
-    """ Build the reference Max-Cut problem using the CP DSL. """
+    """Build the reference Max-Cut problem using the CP DSL."""
     problem = Problem("MaxCut")
 
     num_nodes = problem.input("num_nodes", type=Types.Int)
@@ -357,15 +400,17 @@ def build_maxcut_problem() -> Problem:
 
     return problem
 
+
 # ---------------------------------------------------------------------------
 # Max-Cut compilation tests
 # ---------------------------------------------------------------------------
 
+
 class TestMaxCutCompilation:
-    """ Tests for Max-Cut XQCP compilation. """
+    """Tests for Max-Cut XQCP compilation."""
 
     def test_compiles_without_error(self) -> None:
-        """ Max-Cut problem compiles to three programs. """
+        """Max-Cut problem compiles to three programs."""
         problem = build_maxcut_problem()
         programs = problem.compile()
         assert programs.encoder
@@ -373,37 +418,40 @@ class TestMaxCutCompilation:
         assert programs.decoder
 
     def test_encoder_assembles(self) -> None:
-        """ Generated encoder assembles without error. """
+        """Generated encoder assembles without error."""
         from xqvm.assembler import assemble
+
         problem = build_maxcut_problem()
         programs = problem.compile()
         prog = assemble(programs.encoder)
         assert prog.program.instructions
 
     def test_verifier_assembles(self) -> None:
-        """ Generated verifier assembles without error. """
+        """Generated verifier assembles without error."""
         from xqvm.assembler import assemble
+
         problem = build_maxcut_problem()
         programs = problem.compile()
         prog = assemble(programs.verifier)
         assert prog.program.instructions
 
     def test_decoder_assembles(self) -> None:
-        """ Generated decoder assembles without error. """
+        """Generated decoder assembles without error."""
         from xqvm.assembler import assemble
+
         problem = build_maxcut_problem()
         programs = problem.compile()
         prog = assemble(programs.decoder)
         assert prog.program.instructions
 
     def test_encoder_has_veclen(self) -> None:
-        """ Encoder uses VECLEN for edge count computation. """
+        """Encoder uses VECLEN for edge count computation."""
         problem = build_maxcut_problem()
         programs = problem.compile()
         assert "VECLEN" in programs.encoder
 
     def test_verifier_has_binary_check(self) -> None:
-        """ Verifier uses GETLINE for binary domain check (no ROWSUM/COLSUM). """
+        """Verifier uses GETLINE for binary domain check (no ROWSUM/COLSUM)."""
         problem = build_maxcut_problem()
         programs = problem.compile()
         assert "GETLINE" in programs.verifier
@@ -411,23 +459,26 @@ class TestMaxCutCompilation:
         assert "COLSUM" not in programs.verifier
 
     def test_decoder_has_getline(self) -> None:
-        """ Decoder uses GETLINE (not COLFIND) to read partition. """
+        """Decoder uses GETLINE (not COLFIND) to read partition."""
         problem = build_maxcut_problem()
         programs = problem.compile()
         assert "GETLINE" in programs.decoder
         assert "COLFIND" not in programs.decoder
 
+
 # ---------------------------------------------------------------------------
 # Max-Cut pipeline tests
 # ---------------------------------------------------------------------------
 
+
 class TestMaxCutPipeline:
-    """ End-to-end pipeline tests for Max-Cut XQCP programs. """
+    """End-to-end pipeline tests for Max-Cut XQCP programs."""
 
     def test_full_pipeline_n4(self) -> None:
-        """ Full Max-Cut pipeline for N=4 with bisection sample. """
+        """Full Max-Cut pipeline for N=4 with bisection sample."""
         from xqvm.assembler import assemble
-        from xqvm.core import Executor, XQMX, XQMXMode, XQMXDomain as D, Vec
+        from xqvm.core import XQMX, Executor, Vec, XQMXMode
+        from xqvm.core import XQMXDomain as D
 
         problem = build_maxcut_problem()
         programs = problem.compile()
@@ -460,7 +511,7 @@ class TestMaxCutPipeline:
 
         # Verifier
         ver_s = run(ver, {0: model, 1: sample, 2: n})
-        energy = ver_s.output[0]
+        _energy = ver_s.output[0]
         valid = ver_s.output[1]
         assert valid == 1
 
@@ -472,10 +523,12 @@ class TestMaxCutPipeline:
         assert partition == [0, 0, 1, 1]
 
     def test_matches_handwritten_maxcut(self) -> None:
-        """ Verify CP-generated programs produce identical results to hand-written. """
+        """Verify CP-generated programs produce identical results to hand-written."""
         import pathlib
+
         from xqvm.assembler import assemble
-        from xqvm.core import Executor, XQMX, XQMXMode, XQMXDomain as D, Vec
+        from xqvm.core import XQMX, Executor, Vec, XQMXMode
+        from xqvm.core import XQMXDomain as D
 
         maxcut_dir = pathlib.Path(__file__).parent.parent / "programs" / "maxcut"
 

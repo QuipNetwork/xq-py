@@ -7,6 +7,7 @@ import pytest
 from xqvm.core.vector import Vec, VecElem
 from xqvm.core.xqmx import XQMX
 
+
 class TestVecElem:
     """Tests for VecElem type descriptor."""
 
@@ -77,6 +78,7 @@ class TestVecElem:
         outer = VecElem("vec", inner=inner)
         assert str(outer) == "vec<vec<int>>"
 
+
 class TestVecCreation:
     """Tests for Vec creation and factory methods."""
 
@@ -131,6 +133,7 @@ class TestVecCreation:
         assert v.element_type.kind == "vec"
         assert v.element_type.inner.kind == "int"
 
+
 class TestVecTypeInference:
     """Tests for Vec type inference and validation."""
 
@@ -181,6 +184,7 @@ class TestVecTypeInference:
         with pytest.raises(TypeError):
             v.push(XQMX.binary_model(5))
 
+
 class TestVecAccess:
     """Tests for Vec get/set operations."""
 
@@ -227,6 +231,7 @@ class TestVecAccess:
         with pytest.raises(TypeError):
             v.set(0, XQMX.binary_model(5))
 
+
 class TestVecProperties:
     """Tests for Vec length and capacity properties."""
 
@@ -257,6 +262,7 @@ class TestVecProperties:
         v = Vec.from_list([1, 2, 3, 4])
         assert len(v) == 4
 
+
 class TestVecIteration:
     """Tests for Vec iteration support."""
 
@@ -278,6 +284,7 @@ class TestVecIteration:
         for i in [10, 20, 30]:
             v.push(i)
         assert list(v) == [10, 20, 30]
+
 
 class TestVecNested:
     """Tests for nested Vec operations."""
@@ -311,6 +318,7 @@ class TestVecNested:
         assert level3.element_type.kind == "vec"
         assert level3.element_type.inner.kind == "vec"
         assert level3.element_type.inner.inner.kind == "int"
+
 
 class TestVecRepr:
     """Tests for Vec string representation."""

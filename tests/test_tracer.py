@@ -4,24 +4,27 @@ Tests for the XQVM execution tracer.
 
 import pytest
 
-from xqvm.core.opcodes import Opcode
-from xqvm.core.program import Instruction, Program, make_program
-from xqvm.core.executor import Executor
 from tools.tracer import Tracer
+from xqvm.core.executor import Executor
+from xqvm.core.opcodes import Opcode
+from xqvm.core.program import Instruction, make_program
 
 # === Event Collection ===
 
+
 class TestEventCollection:
-    """ Test that tracer collects events correctly. """
+    """Test that tracer collects events correctly."""
 
     def test_silent_collects_events(self):
         tracer = Tracer(verbosity=0)
-        prog = make_program([
-            Instruction(Opcode.PUSH1, (1,)),
-            Instruction(Opcode.PUSH1, (2,)),
-            Instruction(Opcode.ADD),
-            Instruction(Opcode.HALT),
-        ])
+        prog = make_program(
+            [
+                Instruction(Opcode.PUSH1, (1,)),
+                Instruction(Opcode.PUSH1, (2,)),
+                Instruction(Opcode.ADD),
+                Instruction(Opcode.HALT),
+            ]
+        )
         ex = Executor(tracer=tracer)
         ex.execute(prog)
         # 3 step events + 1 halt event (TARGET-like NOPs excluded, HALT triggers on_halt)
@@ -32,10 +35,12 @@ class TestEventCollection:
 
     def test_event_has_opcode(self):
         tracer = Tracer(verbosity=0)
-        prog = make_program([
-            Instruction(Opcode.PUSH1, (42,)),
-            Instruction(Opcode.HALT),
-        ])
+        prog = make_program(
+            [
+                Instruction(Opcode.PUSH1, (42,)),
+                Instruction(Opcode.HALT),
+            ]
+        )
         ex = Executor(tracer=tracer)
         ex.execute(prog)
         assert tracer.events[0]["opcode"] == "PUSH1"
@@ -43,11 +48,13 @@ class TestEventCollection:
 
     def test_event_captures_stack(self):
         tracer = Tracer(verbosity=0)
-        prog = make_program([
-            Instruction(Opcode.PUSH1, (10,)),
-            Instruction(Opcode.PUSH1, (20,)),
-            Instruction(Opcode.HALT),
-        ])
+        prog = make_program(
+            [
+                Instruction(Opcode.PUSH1, (10,)),
+                Instruction(Opcode.PUSH1, (20,)),
+                Instruction(Opcode.HALT),
+            ]
+        )
         ex = Executor(tracer=tracer)
         ex.execute(prog)
         # After first PUSH: stack was [] -> [10]
@@ -59,11 +66,13 @@ class TestEventCollection:
 
     def test_event_captures_register_changes(self):
         tracer = Tracer(verbosity=0)
-        prog = make_program([
-            Instruction(Opcode.PUSH1, (99,)),
-            Instruction(Opcode.STOW, (5,)),
-            Instruction(Opcode.HALT),
-        ])
+        prog = make_program(
+            [
+                Instruction(Opcode.PUSH1, (99,)),
+                Instruction(Opcode.STOW, (5,)),
+                Instruction(Opcode.HALT),
+            ]
+        )
         ex = Executor(tracer=tracer)
         ex.execute(prog)
         # STOW event should show r5 changed
@@ -73,30 +82,36 @@ class TestEventCollection:
 
     def test_no_change_when_register_unchanged(self):
         tracer = Tracer(verbosity=0)
-        prog = make_program([
-            Instruction(Opcode.PUSH1, (1,)),
-            Instruction(Opcode.PUSH1, (2,)),
-            Instruction(Opcode.ADD),
-            Instruction(Opcode.HALT),
-        ])
+        prog = make_program(
+            [
+                Instruction(Opcode.PUSH1, (1,)),
+                Instruction(Opcode.PUSH1, (2,)),
+                Instruction(Opcode.ADD),
+                Instruction(Opcode.HALT),
+            ]
+        )
         ex = Executor(tracer=tracer)
         ex.execute(prog)
         # ADD doesn't touch registers
         add_event = tracer.events[2]
         assert add_event["changed"] == set()
 
+
 # === Halt Event ===
 
+
 class TestHaltEvent:
-    """ Test halt event recording. """
+    """Test halt event recording."""
 
     def test_halt_event_recorded(self):
         tracer = Tracer(verbosity=0)
-        prog = make_program([
-            Instruction(Opcode.PUSH1, (42,)),
-            Instruction(Opcode.STOW, (0,)),
-            Instruction(Opcode.HALT),
-        ])
+        prog = make_program(
+            [
+                Instruction(Opcode.PUSH1, (42,)),
+                Instruction(Opcode.STOW, (0,)),
+                Instruction(Opcode.HALT),
+            ]
+        )
         ex = Executor(tracer=tracer)
         ex.execute(prog)
         halt = [e for e in tracer.events if "halt" in e]
@@ -106,29 +121,35 @@ class TestHaltEvent:
 
     def test_halt_event_tracks_outputs(self):
         tracer = Tracer(verbosity=0)
-        prog = make_program([
-            Instruction(Opcode.PUSH1, (10,)),
-            Instruction(Opcode.STOW, (0,)),
-            Instruction(Opcode.PUSH1, (0,)),
-            Instruction(Opcode.OUTPUT, (0,)),
-            Instruction(Opcode.HALT),
-        ])
+        prog = make_program(
+            [
+                Instruction(Opcode.PUSH1, (10,)),
+                Instruction(Opcode.STOW, (0,)),
+                Instruction(Opcode.PUSH1, (0,)),
+                Instruction(Opcode.OUTPUT, (0,)),
+                Instruction(Opcode.HALT),
+            ]
+        )
         ex = Executor(tracer=tracer)
         ex.execute(prog)
         halt = [e for e in tracer.events if "halt" in e][0]
         assert halt["output_slots"] == 1
 
+
 # === Error Event ===
 
+
 class TestErrorEvent:
-    """ Test error event recording. """
+    """Test error event recording."""
 
     def test_error_event_recorded(self):
         tracer = Tracer(verbosity=0)
-        prog = make_program([
-            Instruction(Opcode.POP),  # Stack underflow
-            Instruction(Opcode.HALT),
-        ])
+        prog = make_program(
+            [
+                Instruction(Opcode.POP),  # Stack underflow
+                Instruction(Opcode.HALT),
+            ]
+        )
         ex = Executor(tracer=tracer)
         with pytest.raises(Exception):
             ex.execute(prog)
@@ -136,10 +157,12 @@ class TestErrorEvent:
         assert len(error_events) == 1
         assert "underflow" in error_events[0]["error"].lower()
 
+
 # === Formatting ===
 
+
 class TestFormatting:
-    """ Test trace output formatting. """
+    """Test trace output formatting."""
 
     def test_compact_format(self):
         tracer = Tracer(verbosity=1)
@@ -214,31 +237,37 @@ class TestFormatting:
 
     def test_format_trace_all_events(self):
         tracer = Tracer(verbosity=0)
-        prog = make_program([
-            Instruction(Opcode.PUSH1, (1,)),
-            Instruction(Opcode.HALT),
-        ])
+        prog = make_program(
+            [
+                Instruction(Opcode.PUSH1, (1,)),
+                Instruction(Opcode.HALT),
+            ]
+        )
         ex = Executor(tracer=tracer)
         ex.execute(prog)
         text = tracer.format_trace()
         assert "PUSH1" in text
         assert "halt" in text
 
+
 # === Integration ===
 
+
 class TestTracerIntegration:
-    """ End-to-end tracer with real programs. """
+    """End-to-end tracer with real programs."""
 
     def test_loop_tracing(self):
         tracer = Tracer(verbosity=0)
-        prog = make_program([
-            Instruction(Opcode.PUSH1, (0,)),
-            Instruction(Opcode.PUSH1, (3,)),
-            Instruction(Opcode.RANGE),
-            Instruction(Opcode.LVAL, (0,)),
-            Instruction(Opcode.NEXT),
-            Instruction(Opcode.HALT),
-        ])
+        prog = make_program(
+            [
+                Instruction(Opcode.PUSH1, (0,)),
+                Instruction(Opcode.PUSH1, (3,)),
+                Instruction(Opcode.RANGE),
+                Instruction(Opcode.LVAL, (0,)),
+                Instruction(Opcode.NEXT),
+                Instruction(Opcode.HALT),
+            ]
+        )
         ex = Executor(tracer=tracer)
         ex.execute(prog)
         opcodes = [e["opcode"] for e in tracer.events if "opcode" in e]
@@ -248,12 +277,14 @@ class TestTracerIntegration:
         assert "NEXT" in opcodes
 
     def test_tracer_does_not_affect_execution(self):
-        prog = make_program([
-            Instruction(Opcode.PUSH1, (10,)),
-            Instruction(Opcode.PUSH1, (20,)),
-            Instruction(Opcode.ADD),
-            Instruction(Opcode.HALT),
-        ])
+        prog = make_program(
+            [
+                Instruction(Opcode.PUSH1, (10,)),
+                Instruction(Opcode.PUSH1, (20,)),
+                Instruction(Opcode.ADD),
+                Instruction(Opcode.HALT),
+            ]
+        )
         # Without tracer
         ex1 = Executor()
         ex1.execute(prog)

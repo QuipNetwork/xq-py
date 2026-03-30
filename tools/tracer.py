@@ -14,6 +14,7 @@ from xqvm.core.state import Value
 from xqvm.core.vector import Vec
 from xqvm.core.xqmx import XQMX
 
+
 class Tracer:
     """
     Execution tracer with configurable verbosity.
@@ -31,13 +32,13 @@ class Tracer:
         self._buffer: list[dict[str, Any]] = []
 
     def on_step_begin(self, executor: Any, _instr: Instruction) -> None:
-        """ Capture pre-execution state. """
+        """Capture pre-execution state."""
         state = executor.state
         self._pre_stack = list(state.stack)
         self._pre_registers = dict(state.registers)
 
     def on_step_end(self, executor: Any, instr: Instruction) -> None:
-        """ Capture post-execution state, compute diffs, record event. """
+        """Capture post-execution state, compute diffs, record event."""
         state = executor.state
         post_stack = list(state.stack)
         post_registers = dict(state.registers)
@@ -69,7 +70,7 @@ class Tracer:
             self._buffer.append(event)
 
     def on_error(self, executor: Any, instr: Instruction, error: Exception) -> None:
-        """ Record error event with state context. """
+        """Record error event with state context."""
         event = {
             "pc": executor.state.pc,
             "opcode": instr.opcode.name,
@@ -83,7 +84,7 @@ class Tracer:
             self._buffer.append(event)
 
     def on_halt(self, executor: Any) -> None:
-        """ Record halt event with final state summary, flush buffered output. """
+        """Record halt event with final state summary, flush buffered output."""
         state = executor.state
         event = {
             "halt": True,
@@ -98,7 +99,7 @@ class Tracer:
             self._flush()
 
     def _flush(self) -> None:
-        """ Print buffered events with aligned columns. """
+        """Print buffered events with aligned columns."""
         if not self._buffer:
             return
 
@@ -108,7 +109,7 @@ class Tracer:
         self._buffer.clear()
 
     def format_event(self, event: dict[str, Any]) -> str:
-        """ Format a single trace event as text (unaligned). """
+        """Format a single trace event as text (unaligned)."""
         instr_col, stack_col, regs_col = _event_columns(event, self.verbosity)
 
         if not instr_col:
@@ -120,16 +121,18 @@ class Tracer:
         return line
 
     def format_trace(self) -> str:
-        """ Format all collected events as aligned text. """
+        """Format all collected events as aligned text."""
         if not self.events:
             return ""
 
         return "\n".join(_format_aligned(self.events, self.verbosity))
 
+
 # === Value formatting ===
 
+
 def _fmt_val(val: Value | None) -> str:
-    """ Format a register value in compact lowercase. """
+    """Format a register value in compact lowercase."""
     if val is None:
         return "none"
 
@@ -154,6 +157,7 @@ def _fmt_val(val: Value | None) -> str:
         return f"xqmx({mode}, {domain}, n={val.size}, l={nl}, q={nq})"
 
     return repr(val)
+
 
 def _fmt_regs(event: dict[str, Any]) -> str:
     """
@@ -181,7 +185,9 @@ def _fmt_regs(event: dict[str, Any]) -> str:
 
     return "".join(parts)
 
+
 # === Column extraction and alignment ===
+
 
 def _event_columns(event: dict[str, Any], verbosity: int) -> tuple[str, str, str]:
     """
@@ -217,8 +223,9 @@ def _event_columns(event: dict[str, Any], verbosity: int) -> tuple[str, str, str
 
     return (instr_col, stack_col, regs_col)
 
+
 def _format_aligned(events: list[dict[str, Any]], verbosity: int) -> list[str]:
-    """ Format a list of events with aligned instruction, stack, and register columns. """
+    """Format a list of events with aligned instruction, stack, and register columns."""
     rows: list[tuple[str, str, str]] = []
     for event in events:
         rows.append(_event_columns(event, verbosity))

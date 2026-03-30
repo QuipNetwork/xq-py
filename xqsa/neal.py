@@ -17,8 +17,9 @@ from xqvm.core.xqmx import XQMX, XQMXDomain
 
 from .backend import Backend, SolverResult
 
+
 class NealBackend(Backend):
-    """ Simulated annealing backend using dwave-neal. """
+    """Simulated annealing backend using dwave-neal."""
 
     def __init__(
         self,
@@ -33,7 +34,7 @@ class NealBackend(Backend):
         self.seed = seed
 
     def solve(self, model: XQMX, **kwargs: Any) -> SolverResult:
-        """ Solve using simulated annealing via dwave-neal. """
+        """Solve using simulated annealing via dwave-neal."""
         self._validate_model(model)
 
         num_reads = kwargs.get("num_reads", self.num_reads)
@@ -77,11 +78,8 @@ class NealBackend(Backend):
         )
 
     def _model_to_bqm(self, model: XQMX) -> dimod.BinaryQuadraticModel:
-        """ Convert an XQMX model to a dimod BQM. """
-        vartype = (
-            dimod.BINARY if model.domain == XQMXDomain.BINARY
-            else dimod.SPIN
-        )
+        """Convert an XQMX model to a dimod BQM."""
+        vartype = dimod.BINARY if model.domain == XQMXDomain.BINARY else dimod.SPIN
         return dimod.BinaryQuadraticModel(
             model.linear,
             model.quadratic,
@@ -90,7 +88,7 @@ class NealBackend(Backend):
         )
 
     def _sample_to_xqmx(self, model: XQMX, raw_sample: dict[int, int]) -> XQMX:
-        """ Convert a dimod sample dict to an XQMX sample. """
+        """Convert a dimod sample dict to an XQMX sample."""
         if model.domain == XQMXDomain.BINARY:
             sample = XQMX.binary_sample(model.size, model.rows, model.cols)
         else:

@@ -7,12 +7,13 @@ a single `assemble()` call.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from xqvm.core.program import Instruction, Program
 
 from .parser import parse
 from .validator import validate
+
 
 @dataclass
 class AssembledProgram:
@@ -21,6 +22,7 @@ class AssembledProgram:
 
     Wraps the core Program with assembly-level metadata.
     """
+
     program: Program
     source_lines: int = 0
     name: str = ""
@@ -30,6 +32,7 @@ class AssembledProgram:
 
     def __getitem__(self, index: int) -> Instruction:
         return self.program[index]
+
 
 def assemble(source: str, name: str = "") -> AssembledProgram:
     """

@@ -6,8 +6,9 @@ from __future__ import annotations
 
 from xqvm.core.xqmx import XQMX, XQMXMode
 
+
 def render_info(xqmx: XQMX) -> str:
-    """ Render a summary header for an XQMX. """
+    """Render a summary header for an XQMX."""
     mode = "MODEL" if xqmx.mode == XQMXMode.MODEL else "SAMPLE"
     domain = xqmx.domain.name
     nnz_linear = len(xqmx.linear)
@@ -25,6 +26,7 @@ def render_info(xqmx: XQMX) -> str:
     lines.append(f"  quadratic: {nnz_quad} non-zero")
     return "\n".join(lines)
 
+
 def render_matrix(xqmx: XQMX) -> str:
     """
     Render an XQMX as an ASCII matrix.
@@ -40,8 +42,9 @@ def render_matrix(xqmx: XQMX) -> str:
 
     return _render_model_matrix(xqmx)
 
+
 def _render_model_matrix(xqmx: XQMX) -> str:
-    """ Render model as NxN matrix with linear on diagonal, quadratic off-diagonal. """
+    """Render model as NxN matrix with linear on diagonal, quadratic off-diagonal."""
     n = xqmx.size
 
     # Collect all values to determine column width
@@ -64,8 +67,9 @@ def _render_model_matrix(xqmx: XQMX) -> str:
 
     return _format_grid(cells, n, n)
 
+
 def _render_sample_grid(xqmx: XQMX) -> str:
-    """ Render sample as rows x cols grid of variable assignments. """
+    """Render sample as rows x cols grid of variable assignments."""
     rows, cols = xqmx.rows, xqmx.cols
     cells: list[list[str]] = []
 
@@ -83,8 +87,9 @@ def _render_sample_grid(xqmx: XQMX) -> str:
 
     return _format_grid(cells, rows, cols)
 
+
 def _format_grid(cells: list[list[str]], rows: int, cols: int) -> str:
-    """ Format a 2D list of strings into aligned columns. """
+    """Format a 2D list of strings into aligned columns."""
     col_widths = []
     for c in range(cols):
         width = max(len(cells[r][c]) for r in range(rows))
@@ -96,6 +101,7 @@ def _format_grid(cells: list[list[str]], rows: int, cols: int) -> str:
         lines.append(" ".join(parts))
 
     return "\n".join(lines)
+
 
 def render_sparsity(xqmx: XQMX) -> str:
     """
@@ -138,8 +144,9 @@ def render_sparsity(xqmx: XQMX) -> str:
 
     return "\n".join(lines)
 
+
 def _fmt_val(val: float | int) -> str:
-    """ Format a numeric value for display. """
+    """Format a numeric value for display."""
     if isinstance(val, float) and val == int(val):
         return str(int(val))
     return str(val)

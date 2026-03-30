@@ -2,13 +2,14 @@
 Tests for the XQVM ASCII visualizer.
 """
 
-from xqvm.core.xqmx import XQMX, XQMXMode, XQMXDomain
 from tools.visualizer import render_info, render_matrix, render_sparsity
+from xqvm.core.xqmx import XQMX, XQMXDomain, XQMXMode
 
 # === render_info ===
 
+
 class TestRenderInfo:
-    """ Test XQMX info summary rendering. """
+    """Test XQMX info summary rendering."""
 
     def test_binary_model(self):
         m = XQMX.binary_model(size=4, rows=2, cols=2)
@@ -38,10 +39,12 @@ class TestRenderInfo:
         assert "2 non-zero" in text  # linear
         assert "1 non-zero" in text  # quadratic
 
+
 # === render_matrix ===
 
+
 class TestRenderMatrix:
-    """ Test ASCII matrix rendering. """
+    """Test ASCII matrix rendering."""
 
     def test_empty_xqmx(self):
         m = XQMX(mode=XQMXMode.MODEL, domain=XQMXDomain.BINARY, size=0)
@@ -95,10 +98,12 @@ class TestRenderMatrix:
         # All lines should have same length (right-justified columns)
         assert len(lines[0]) == len(lines[1])
 
+
 # === render_sparsity ===
 
+
 class TestRenderSparsity:
-    """ Test sparsity pattern rendering. """
+    """Test sparsity pattern rendering."""
 
     def test_empty_xqmx(self):
         m = XQMX(mode=XQMXMode.MODEL, domain=XQMXDomain.BINARY, size=0)

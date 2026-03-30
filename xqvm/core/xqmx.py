@@ -15,16 +15,21 @@ from enum import Enum, auto
 
 from .errors import XQMXModeError
 
+
 class XQMXMode(Enum):
-    """ XQMX matrix mode: model (for building) or sample (for solutions). """
+    """XQMX matrix mode: model (for building) or sample (for solutions)."""
+
     MODEL = auto()
     SAMPLE = auto()
 
+
 class XQMXDomain(Enum):
-    """ XQMX variable domain types. """
-    BINARY = auto()    # [0, 1] - QUBO/BQM
-    SPIN = auto()      # [-1, +1] - Ising
+    """XQMX variable domain types."""
+
+    BINARY = auto()  # [0, 1] - QUBO/BQM
+    SPIN = auto()  # [-1, +1] - Ising
     DISCRETE = auto()  # [0..k-1] - discrete with k values
+
 
 @dataclass
 class XQMX:
@@ -40,6 +45,7 @@ class XQMX:
 
     For SAMPLE mode, linear stores the variable assignments (0/1 or -1/+1).
     """
+
     mode: XQMXMode
     domain: XQMXDomain
     size: int  # Total number of variables
@@ -53,13 +59,13 @@ class XQMX:
         if self.size < 0:
             raise ValueError(f"XQMX size must be non-negative, got {self.size}")
         if self.rows < 0 or self.cols < 0:
-            raise ValueError(f"XQMX rows/cols must be non-negative")
+            raise ValueError("XQMX rows/cols must be non-negative")
         if self.domain == XQMXDomain.DISCRETE and self.discrete_k < 2:
             raise ValueError(f"DISCRETE domain requires k >= 2, got {self.discrete_k}")
 
     @classmethod
     def binary_model(cls, size: int, rows: int = 0, cols: int = 0) -> XQMX:
-        """ Create a binary [0,1] model XQMX. """
+        """Create a binary [0,1] model XQMX."""
         return cls(
             mode=XQMXMode.MODEL,
             domain=XQMXDomain.BINARY,
@@ -70,7 +76,7 @@ class XQMX:
 
     @classmethod
     def spin_model(cls, size: int, rows: int = 0, cols: int = 0) -> XQMX:
-        """ Create a spin [-1,+1] model XQMX. """
+        """Create a spin [-1,+1] model XQMX."""
         return cls(
             mode=XQMXMode.MODEL,
             domain=XQMXDomain.SPIN,
@@ -81,7 +87,7 @@ class XQMX:
 
     @classmethod
     def discrete_model(cls, size: int, k: int, rows: int = 0, cols: int = 0) -> XQMX:
-        """ Create a discrete [0..k-1] model XQMX. """
+        """Create a discrete [0..k-1] model XQMX."""
         return cls(
             mode=XQMXMode.MODEL,
             domain=XQMXDomain.DISCRETE,
@@ -93,7 +99,7 @@ class XQMX:
 
     @classmethod
     def binary_sample(cls, size: int, rows: int = 0, cols: int = 0) -> XQMX:
-        """ Create a binary [0,1] sample XQMX. """
+        """Create a binary [0,1] sample XQMX."""
         return cls(
             mode=XQMXMode.SAMPLE,
             domain=XQMXDomain.BINARY,
@@ -104,7 +110,7 @@ class XQMX:
 
     @classmethod
     def spin_sample(cls, size: int, rows: int = 0, cols: int = 0) -> XQMX:
-        """ Create a spin [-1,+1] sample XQMX. """
+        """Create a spin [-1,+1] sample XQMX."""
         return cls(
             mode=XQMXMode.SAMPLE,
             domain=XQMXDomain.SPIN,
@@ -115,7 +121,7 @@ class XQMX:
 
     @classmethod
     def discrete_sample(cls, size: int, k: int, rows: int = 0, cols: int = 0) -> XQMX:
-        """ Create a discrete [0..k-1] sample XQMX. """
+        """Create a discrete [0..k-1] sample XQMX."""
         return cls(
             mode=XQMXMode.SAMPLE,
             domain=XQMXDomain.DISCRETE,
@@ -126,19 +132,19 @@ class XQMX:
         )
 
     def is_model(self) -> bool:
-        """ Check if this is a model (vs sample). """
+        """Check if this is a model (vs sample)."""
         return self.mode == XQMXMode.MODEL
 
     def is_sample(self) -> bool:
-        """ Check if this is a sample (vs model). """
+        """Check if this is a sample (vs model)."""
         return self.mode == XQMXMode.SAMPLE
 
     def get_linear(self, i: int) -> float:
-        """ Get linear coefficient/value for variable i. """
+        """Get linear coefficient/value for variable i."""
         return self.linear.get(i, 0.0)
 
     def set_linear(self, i: int, value: float) -> None:
-        """ Set linear coefficient/value for variable i. """
+        """Set linear coefficient/value for variable i."""
         if i < 0 or i >= self.size:
             raise IndexError(f"Variable index {i} out of range [0, {self.size})")
 
@@ -148,7 +154,7 @@ class XQMX:
             self.linear[i] = value
 
     def add_linear(self, i: int, delta: float) -> None:
-        """ Add to linear coefficient for variable i. """
+        """Add to linear coefficient for variable i."""
         if i < 0 or i >= self.size:
             raise IndexError(f"Variable index {i} out of range [0, {self.size})")
 
@@ -161,13 +167,13 @@ class XQMX:
             self.linear[i] = new_value
 
     def get_quadratic(self, i: int, j: int) -> float:
-        """ Get quadratic coefficient for variables i, j. """
+        """Get quadratic coefficient for variables i, j."""
         if i > j:
             i, j = j, i
         return self.quadratic.get((i, j), 0.0)
 
     def set_quadratic(self, i: int, j: int, value: float) -> None:
-        """ Set quadratic coefficient for variables i, j. """
+        """Set quadratic coefficient for variables i, j."""
         if i < 0 or i >= self.size or j < 0 or j >= self.size:
             raise IndexError(f"Variable indices ({i}, {j}) out of range [0, {self.size})")
 
@@ -180,7 +186,7 @@ class XQMX:
             self.quadratic[(i, j)] = value
 
     def add_quadratic(self, i: int, j: int, delta: float) -> None:
-        """ Add to quadratic coefficient for variables i, j. """
+        """Add to quadratic coefficient for variables i, j."""
         if i < 0 or i >= self.size or j < 0 or j >= self.size:
             raise IndexError(f"Variable indices ({i}, {j}) out of range [0, {self.size})")
 
@@ -196,7 +202,7 @@ class XQMX:
             self.quadratic[(i, j)] = new_value
 
     def grid_index(self, row: int, col: int) -> int:
-        """ Convert grid (row, col) to linear variable index. """
+        """Convert grid (row, col) to linear variable index."""
         if self.rows == 0 or self.cols == 0:
             raise ValueError("Grid indexing requires non-zero rows and cols")
         if row < 0 or row >= self.rows or col < 0 or col >= self.cols:
@@ -211,9 +217,11 @@ class XQMX:
             f"quadratic_terms={len(self.quadratic)})"
         )
 
+
 # ============================================================================
 # Grid Operations
 # ============================================================================
+
 
 def row_indices(xqmx: XQMX, row: int) -> list[int]:
     """
@@ -229,6 +237,7 @@ def row_indices(xqmx: XQMX, row: int) -> list[int]:
     start = row * xqmx.cols
     return list(range(start, start + xqmx.cols))
 
+
 def col_indices(xqmx: XQMX, col: int) -> list[int]:
     """
     Get all variable indices in a given column.
@@ -242,6 +251,7 @@ def col_indices(xqmx: XQMX, col: int) -> list[int]:
 
     return [col + r * xqmx.cols for r in range(xqmx.rows)]
 
+
 def row_sum(xqmx: XQMX, row: int) -> float:
     """
     Sum all linear values in a given row.
@@ -251,6 +261,7 @@ def row_sum(xqmx: XQMX, row: int) -> float:
     indices = row_indices(xqmx, row)
     return sum(xqmx.get_linear(i) for i in indices)
 
+
 def col_sum(xqmx: XQMX, col: int) -> float:
     """
     Sum all linear values in a given column.
@@ -259,6 +270,7 @@ def col_sum(xqmx: XQMX, col: int) -> float:
     """
     indices = col_indices(xqmx, col)
     return sum(xqmx.get_linear(i) for i in indices)
+
 
 def row_find(xqmx: XQMX, row: int, value: int) -> int:
     """
@@ -275,6 +287,7 @@ def row_find(xqmx: XQMX, row: int, value: int) -> int:
             return col
     return -1
 
+
 def col_find(xqmx: XQMX, col: int, value: int) -> int:
     """
     Find the first row index where the column has the given value.
@@ -290,9 +303,11 @@ def col_find(xqmx: XQMX, col: int, value: int) -> int:
             return row
     return -1
 
+
 # ============================================================================
 # Mode Validators
 # ============================================================================
+
 
 def require_model_mode(xqmx: XQMX, operation: str) -> None:
     """
@@ -303,6 +318,7 @@ def require_model_mode(xqmx: XQMX, operation: str) -> None:
     if xqmx.mode != XQMXMode.MODEL:
         raise XQMXModeError(operation, xqmx.mode.name, "MODEL")
 
+
 def require_sample_mode(xqmx: XQMX, operation: str) -> None:
     """
     Require that the XQMX is in SAMPLE mode.
@@ -312,9 +328,11 @@ def require_sample_mode(xqmx: XQMX, operation: str) -> None:
     if xqmx.mode != XQMXMode.SAMPLE:
         raise XQMXModeError(operation, xqmx.mode.name, "SAMPLE")
 
+
 # ============================================================================
 # High-Level Functions (HLF)
 # ============================================================================
+
 
 def expand_onehot(model: XQMX, indices: list[int], penalty: float) -> None:
     """
@@ -343,6 +361,7 @@ def expand_onehot(model: XQMX, indices: list[int], penalty: float) -> None:
         for b in range(a + 1, n):
             model.add_quadratic(indices[a], indices[b], 2.0 * penalty)
 
+
 def expand_exclude(model: XQMX, i: int, j: int, penalty: float) -> None:
     """
     Add an exclusion constraint: variables i and j cannot both be 1.
@@ -353,6 +372,7 @@ def expand_exclude(model: XQMX, i: int, j: int, penalty: float) -> None:
     require_model_mode(model, "EXCLUDE")
 
     model.add_quadratic(i, j, penalty)
+
 
 def expand_implies(model: XQMX, i: int, j: int, penalty: float) -> None:
     """
@@ -371,6 +391,7 @@ def expand_implies(model: XQMX, i: int, j: int, penalty: float) -> None:
     model.add_linear(i, penalty)
     model.add_quadratic(i, j, -penalty)
 
+
 def compute_energy(model: XQMX, sample: XQMX) -> float:
     """
     Compute the energy of a sample with respect to a model.
@@ -385,9 +406,7 @@ def compute_energy(model: XQMX, sample: XQMX) -> float:
     require_sample_mode(sample, "ENERGY (sample)")
 
     if model.size != sample.size:
-        raise ValueError(
-            f"Model and sample size mismatch: {model.size} vs {sample.size}"
-        )
+        raise ValueError(f"Model and sample size mismatch: {model.size} vs {sample.size}")
 
     energy = 0.0
 
@@ -404,8 +423,9 @@ def compute_energy(model: XQMX, sample: XQMX) -> float:
 
     return energy
 
+
 def triu(i: int, j: int) -> int:
-    """ Upper triangular index: maps (i, j) to a linear index (auto-swaps so i < j). """
+    """Upper triangular index: maps (i, j) to a linear index (auto-swaps so i < j)."""
     if i >= j:
         i, j = j, i
     return j * (j - 1) // 2 + i

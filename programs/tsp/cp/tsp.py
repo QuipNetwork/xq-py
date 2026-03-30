@@ -16,8 +16,9 @@ from xqvm.core import XQMXDomain
 
 OUTPUT_DIR = Path(__file__).parent
 
+
 def build() -> Problem:
-    """ Build the TSP constraint program. """
+    """Build the TSP constraint program."""
     problem = Problem("TSP")
 
     # --- Inputs ---
@@ -41,10 +42,14 @@ def build() -> Problem:
                 next_position = (position + 1) % num_cities
 
                 problem.model.add_quadratic(
-                    (city_i, position), (city_j, next_position), dist,
+                    (city_i, position),
+                    (city_j, next_position),
+                    dist,
                 )
                 problem.model.add_quadratic(
-                    (city_j, position), (city_i, next_position), dist,
+                    (city_j, position),
+                    (city_i, next_position),
+                    dist,
                 )
 
     # --- Constraints: one-hot rows and columns ---
@@ -62,8 +67,9 @@ def build() -> Problem:
 
     return problem
 
+
 def compile_and_write() -> None:
-    """ Compile the TSP program and write .xqasm files. """
+    """Compile the TSP program and write .xqasm files."""
     problem = build()
     programs = problem.compile()
 
@@ -73,12 +79,15 @@ def compile_and_write() -> None:
 
     print(f"Wrote encoder.xqasm, verifier.xqasm, decoder.xqasm to {OUTPUT_DIR}")
 
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Compile TSP XQCP program")
     parser.add_argument(
-        "--print", action="store_true", dest="print_asm",
+        "--print",
+        action="store_true",
+        dest="print_asm",
         help="Print generated assembly instead of writing files",
     )
     args = parser.parse_args()

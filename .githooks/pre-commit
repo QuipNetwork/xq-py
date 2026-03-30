@@ -1,15 +1,23 @@
 #!/usr/bin/env bash
 set -e
 
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+VENV="$REPO_ROOT/.venv/bin"
+
+if [ ! -d "$VENV" ]; then
+    echo "Error: .venv not found. Run: python -m venv .venv && pip install -r requirements.txt"
+    exit 1
+fi
+
 echo "Running pre-commit checks..."
 
 echo "  ruff check"
-ruff check .
+"$VENV/ruff" check .
 
 echo "  ruff format"
-ruff format --check .
+"$VENV/ruff" format --check .
 
 echo "  pytest"
-python -m pytest tests/ -v
+"$VENV/python" -m pytest tests/ -v
 
 echo "All checks passed."

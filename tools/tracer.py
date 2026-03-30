@@ -24,7 +24,7 @@ class Tracer:
         2 = detailed (+ stack snapshot and full register state)
     """
 
-    def __init__(self, verbosity: int = 1):
+    def __init__(self, verbosity: int = 1) -> None:
         self.verbosity = verbosity
         self.events: list[dict[str, Any]] = []
         self._pre_stack: list[int] = []

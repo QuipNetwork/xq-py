@@ -214,10 +214,12 @@ class Executor:
             for slot, value in input_data.items():
                 self.state.set_input(slot, value)
 
-        # Pre-scan: collect all TARGET definitions so forward jumps resolve
+        # Pre-scan: assign sequential IDs to TARGET instructions
+        target_counter = 0
         for i, instr in enumerate(program.instructions):
             if instr.opcode == Opcode.TARGET:
-                self.state.jc.define_target(instr.operands[0], i)
+                self.state.jc.define_target(target_counter, i)
+                target_counter += 1
 
         while not self.state.halted and self.state.pc < len(program):
             self.step()

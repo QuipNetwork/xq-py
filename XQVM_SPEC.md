@@ -102,9 +102,9 @@ The following conventions are used throughout this section to describe opcode be
 | Code | Mnemonic | Arguments | Stack effect | Register effect | Interpretation |
 |------|----------|-----------|--------------|-----------------|----------------|
 | `0x00` | `NOP` | — | `[...] → [...]` | — | No operation. |
-| `0x01` | `TARGET` | `.N` | `[...] → [...]` | — | Mark a valid jump destination. Required at every label that `JUMP`/`JUMPI` may target. During pre-scan, registers the current PC as target N. No-op at runtime. Duplicate target IDs are allowed (last definition wins). |
-| `0x02` | `JUMP` | `.N` | `[...] → [...]` | — | Set PC to the instruction at `targets[N]`. Unconditional. Error: `TargetNotFound` if N is undefined. |
-| `0x03` | `JUMPI` | `.N` | `[..., cond] → [...]` | — | Pop `cond`. If `cond != 0`, set PC to `targets[N]`; otherwise fall through. Error: `TargetNotFound` if N is undefined and condition is non-zero. |
+| `0x01` | `TARGET` | — | `[...] → [...]` | — | Mark a valid jump destination. No operand in bytecode; during pre-scan, each TARGET is assigned a sequential ID (0, 1, 2, ...) in program order and registered at the current PC. No-op at runtime. In assembly source, `TARGET .N` is syntactic sugar — the `.N` label is resolved by the assembler and not encoded. |
+| `0x02` | `JUMP` | `.N` | `[...] → [...]` | — | Set PC to the instruction at `targets[N]`, where N is the sequential target ID (u8). Unconditional. Error: `TargetNotFound` if N is undefined. |
+| `0x03` | `JUMPI` | `.N` | `[..., cond] → [...]` | — | Pop `cond`. If `cond != 0`, set PC to `targets[N]` (u8); otherwise fall through. Error: `TargetNotFound` if N is undefined and condition is non-zero. |
 | `0x04` | `NEXT` | — | `[...] → [...]` | — | Advance the active loop frame index. If more values remain, set PC to `frame.target` (loop body start). Otherwise pop the frame and fall through. Error: `LoopError` if no loop frame is active. |
 | `0x05` | `LVAL` | `reg` | `[...] → [...]` | `write` — `reg ← values[index]` | Copy the current loop value into `reg`. For RANGE loops: `reg ← int`. For ITER loops: `reg ← vec element` (type preserved: int or xqmx). Error: `LoopError` if no active loop. |
 | `0x06` | `RANGE` | — | `[..., start, count] → [...]` | — | Pop `count`, then `start`. Generate values `[start, start+1, ..., start+count-1]`. Push a loop frame with `target = PC+1`. If `count <= 0`, the loop body is skipped entirely. |
@@ -362,7 +362,7 @@ Where `x_sample[i] = sample.linear[i]` (the variable assignment). Error: `ValueE
 ```assembly
 # Comments start with #
 # Registers: r0, r1, ... r255 (8-bit slot ID)
-# Targets: .0, .1, .2 (dot-prefixed numeric)
+# Targets: .0, .1, .2 (dot-prefixed numeric, sugar for TARGET; resolved to sequential IDs by assembler)
 # Hex literals: 0x0A, 0xFF
 
 PUSH 0x00         # start = 0
@@ -404,7 +404,7 @@ Each opcode occupies a single byte in the range `0x00`–`0x7F`. Bytes `0x80`–
 | Operand type | Width | Encoding |
 |--------------|-------|----------|
 | Register (`reg`) | 1 byte | Unsigned `u8`. Range: `0`–`255`. |
-| Target (`.N`) | 2 bytes | Unsigned big-endian `u16`. Range: `0`–`65535`. |
+| Target (`.N`) | 1 byte | Unsigned `u8`. Range: `0`–`255`. Used by `JUMP`/`JUMPI` only; `TARGET` has no operand. |
 | Immediate (`PUSHn`) | `n` bytes | Big-endian signed two's complement. Range depends on `n` (1–8 bytes). |
 
 Special case: `ENERGY` has two register operands (model register followed by sample register), totalling 2 operand bytes.
@@ -413,9 +413,9 @@ Special case: `ENERGY` has two register operands (model register followed by sam
 
 | Length | Opcodes |
 |--------|---------|
-| 1 byte (opcode only) | `NOP`, `NEXT`, `RANGE`, `HALT`, `POP`, `SCLR`, `SWAP`, `COPY`, `ADD`, `SUB`, `MUL`, `DIV`, `MOD`, `SQR`, `ABS`, `NEG`, `MIN`, `MAX`, `INC`, `DEC`, `EQ`, `LT`, `GT`, `LTE`, `GTE`, `NOT`, `AND`, `OR`, `XOR`, `BAND`, `BOR`, `BXOR`, `BNOT`, `SHL`, `SHR`, `IDXGRID`, `IDXTRIU` |
-| 2 bytes (opcode + 1 reg) | `LOAD`, `STOW`, `DROP`, `INPUT`, `OUTPUT`, `LVAL`, `ITER`, `PUSH1`, `VEC`, `VECI`, `VECX`, `BQMX`, `SQMX`, `XQMX`, `BSMX`, `SSMX`, `XSMX`, `VECPUSH`, `VECGET`, `VECSET`, `VECLEN`, `GETLINE`, `SETLINE`, `ADDLINE`, `GETQUAD`, `SETQUAD`, `ADDQUAD`, `RESIZE`, `ROWFIND`, `COLFIND`, `ROWSUM`, `COLSUM`, `ONEHOTR`, `ONEHOTC`, `EXCLUDE`, `IMPLIES` |
-| 3 bytes (opcode + 2) | `TARGET` (1 + u16), `JUMP` (1 + u16), `JUMPI` (1 + u16), `PUSH2` (1 + 2 imm), `ENERGY` (1 + 2 reg) |
+| 1 byte (opcode only) | `NOP`, `TARGET`, `NEXT`, `RANGE`, `HALT`, `POP`, `SCLR`, `SWAP`, `COPY`, `ADD`, `SUB`, `MUL`, `DIV`, `MOD`, `SQR`, `ABS`, `NEG`, `MIN`, `MAX`, `INC`, `DEC`, `EQ`, `LT`, `GT`, `LTE`, `GTE`, `NOT`, `AND`, `OR`, `XOR`, `BAND`, `BOR`, `BXOR`, `BNOT`, `SHL`, `SHR`, `IDXGRID`, `IDXTRIU` |
+| 2 bytes (opcode + 1) | `JUMP` (1 + u8 target), `JUMPI` (1 + u8 target), `LOAD`, `STOW`, `DROP`, `INPUT`, `OUTPUT`, `LVAL`, `ITER`, `PUSH1`, `VEC`, `VECI`, `VECX`, `BQMX`, `SQMX`, `XQMX`, `BSMX`, `SSMX`, `XSMX`, `VECPUSH`, `VECGET`, `VECSET`, `VECLEN`, `GETLINE`, `SETLINE`, `ADDLINE`, `GETQUAD`, `SETQUAD`, `ADDQUAD`, `RESIZE`, `ROWFIND`, `COLFIND`, `ROWSUM`, `COLSUM`, `ONEHOTR`, `ONEHOTC`, `EXCLUDE`, `IMPLIES` |
+| 3 bytes (opcode + 2) | `PUSH2` (1 + 2 imm), `ENERGY` (1 + 2 reg) |
 | 4 bytes | `PUSH3` |
 | 5 bytes | `PUSH4` |
 | 6 bytes | `PUSH5` |
@@ -432,8 +432,8 @@ NOP             → 0x00
 PUSH1 42        → 0x11 0x2A
 PUSH2 -1        → 0x12 0xFF 0xFF
 LOAD r5         → 0x0A 0x05
-JUMP .100       → 0x02 0x00 0x64
-TARGET .3       → 0x01 0x00 0x03
+JUMP .100       → 0x02 0x64
+TARGET .3       → 0x01
 ENERGY r0 r1    → 0x7F 0x00 0x01
 BQMX r2         → 0x40 0x02
 ```
@@ -446,7 +446,7 @@ BQMX r2         → 0x40 0x02
 |-------|-------|-------|
 | Stack depth | 8192 (2^13) | `StackOverflow` if exceeded. |
 | Register slots | 256 (r0–r255) | 8-bit addressing. |
-| Target IDs | 0–65535 | 16-bit in bytecode. |
+| Target IDs | 0–255 | 8-bit in bytecode. Sequential assignment during pre-scan. |
 | Loop nesting | Unbounded | Limited by available memory. |
 | XQMX size | Implementation-defined | No spec limit. |
 | Program length | Implementation-defined | No spec limit. |

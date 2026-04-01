@@ -53,8 +53,13 @@ def disassemble_instruction(instr: Instruction) -> str:
 def disassemble(program: Program) -> str:
     """Convert a Program to assembly text."""
     lines: list[str] = []
+    target_counter = 0
 
     for instr in program.instructions:
-        lines.append(disassemble_instruction(instr))
+        if instr.opcode == Opcode.TARGET:
+            lines.append(f"TARGET .{target_counter}")
+            target_counter += 1
+        else:
+            lines.append(disassemble_instruction(instr))
 
     return "\n".join(lines)

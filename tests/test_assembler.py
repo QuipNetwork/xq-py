@@ -7,7 +7,7 @@ import pytest
 from tools.disassembler import disassemble, disassemble_instruction
 from xqvm.assembler.parser import ParseError, parse
 from xqvm.assembler.program import assemble
-from xqvm.assembler.validator import ValidationError, validate
+from xqvm.assembler.validator import validate
 from xqvm.core.opcodes import Opcode
 from xqvm.core.program import Instruction
 
@@ -77,11 +77,11 @@ class TestParserBasic:
     def test_target_operand(self):
         result = parse("TARGET .0")
         assert result[0].opcode == Opcode.TARGET
-        assert result[0].operands == (0,)
+        assert result[0].operands == ()
 
     def test_jump_target(self):
-        result = parse("JUMP .5")
-        assert result[0].operands == (5,)
+        result = parse("TARGET .5\nJUMP .5")
+        assert result[1].operands == (0,)  # Label .5 resolves to sequential ID 0
 
     def test_two_register_operands(self):
         result = parse("ENERGY r0 r1")
@@ -329,23 +329,20 @@ class TestValidatorTargets:
         validate(instructions)  # Should not raise
 
     def test_undefined_target_jump(self):
-        instructions = parse("JUMP .0\nHALT")
-        with pytest.raises(ValidationError, match="Undefined target .0"):
-            validate(instructions)
+        with pytest.raises(ParseError, match="Undefined target .0"):
+            parse("JUMP .0\nHALT")
 
     def test_undefined_target_jumpi(self):
-        instructions = parse("PUSH 1\nJUMPI .5\nHALT")
-        with pytest.raises(ValidationError, match="Undefined target .5"):
-            validate(instructions)
+        with pytest.raises(ParseError, match="Undefined target .5"):
+            parse("PUSH 1\nJUMPI .5\nHALT")
 
     def test_forward_reference(self):
         instructions = parse("JUMP .0\nTARGET .0\nHALT")
         validate(instructions)  # Forward refs are valid
 
     def test_duplicate_target(self):
-        instructions = parse("TARGET .0\nTARGET .0\nHALT")
-        with pytest.raises(ValidationError, match="Duplicate target .0"):
-            validate(instructions)
+        with pytest.raises(ParseError, match="Duplicate target label .0"):
+            parse("TARGET .0\nTARGET .0\nHALT")
 
     def test_target_definition_no_validation_needed(self):
         instructions = parse("TARGET .5\nHALT")
@@ -396,7 +393,7 @@ class TestAssemble:
             assemble("BOGUS")
 
     def test_assemble_rejects_undefined_target(self):
-        with pytest.raises(ValidationError):
+        with pytest.raises(ParseError):
             assemble("JUMP .0\nHALT")
 
 
@@ -529,7 +526,7 @@ class TestRoundTrip:
             assert prog1[i].operands == prog2[i].operands
 
     def test_all_operand_types_round_trip(self):
-        source = "PUSH 0xFF\nSTOW r10\nTARGET .3\nJUMP .3\nENERGY r0 r1\nHALT"
+        source = "PUSH 0xFF\nSTOW r10\nTARGET .0\nJUMP .0\nENERGY r0 r1\nHALT"
         prog1 = assemble(source)
         text = disassemble(prog1.program)
         prog2 = assemble(text)

@@ -1,9 +1,10 @@
 """
 XQVM Assembly Parser: Tokenize and parse .xqasm text into instructions.
 
-Two-pass design:
+Three-pass design:
   Pass 1 — Tokenize lines into (opcode_name, operand_tokens, line_number) tuples.
-  Pass 2 — Resolve opcode names and parse operand tokens into Instruction objects.
+  Pass 2 — Resolve TARGET labels: assign sequential IDs, build label map.
+  Pass 3 — Build Instruction objects, resolving JUMP/JUMPI labels via the map.
 """
 
 from __future__ import annotations
@@ -143,14 +144,60 @@ def _tokenize(source: str) -> list[tuple[str, list[str], int]]:
     return tokens
 
 
+def _parse_target_label(token: str, line: int) -> int:
+    """Parse a `.N` target label token into its integer value."""
+    if not token.startswith("."):
+        raise ParseError(f"Expected target label (.N), got '{token}'", line)
+
+    try:
+        return int(token[1:])
+    except ValueError:
+        raise ParseError(f"Invalid target label '{token}'", line)
+
+
+def _resolve_labels(
+    tokens: list[tuple[str, list[str], int]],
+) -> dict[int, int]:
+    """
+    Pass 2: Scan TARGET lines and build a label-to-sequential-ID map.
+
+    Each TARGET with a `.N` sugar label gets the next sequential ID (0, 1, 2, ...).
+    Bare TARGET (no label) also advances the counter but has no label entry.
+    Duplicate labels raise ParseError.
+    """
+    label_map: dict[int, int] = {}
+    target_counter = 0
+
+    for opcode_name, operand_tokens, line_num in tokens:
+        if opcode_name.upper() != "TARGET":
+            continue
+
+        if len(operand_tokens) == 1:
+            user_label = _parse_target_label(operand_tokens[0], line_num)
+            if user_label in label_map:
+                raise ParseError(f"Duplicate target label .{user_label}", line_num)
+            label_map[user_label] = target_counter
+        elif len(operand_tokens) > 1:
+            raise ParseError(
+                f"TARGET expects 0 or 1 label, got {len(operand_tokens)}",
+                line_num,
+            )
+
+        target_counter += 1
+
+    return label_map
+
+
 def parse(source: str) -> list[Instruction]:
     """
     Parse assembly source text into a list of Instructions.
 
     Resolves opcode names, validates operand types and counts,
+    resolves TARGET label sugar into sequential IDs for JUMP/JUMPI,
     and returns a flat instruction list ready for execution.
     """
     tokens = _tokenize(source)
+    label_map = _resolve_labels(tokens)
     instructions: list[Instruction] = []
 
     for opcode_name, operand_tokens, line_num in tokens:
@@ -158,6 +205,31 @@ def parse(source: str) -> list[Instruction]:
         if opcode is None:
             raise ParseError(f"Unknown opcode '{opcode_name}'", line_num)
 
+        # TARGET: consume optional label sugar, emit 0-operand instruction
+        if opcode == Opcode.TARGET:
+            if len(operand_tokens) > 1:
+                raise ParseError(
+                    f"TARGET expects 0 or 1 label, got {len(operand_tokens)}",
+                    line_num,
+                )
+            instructions.append(Instruction(opcode, (), line_num))
+            continue
+
+        # JUMP/JUMPI: resolve label to sequential target ID
+        if opcode in (Opcode.JUMP, Opcode.JUMPI):
+            if len(operand_tokens) != 1:
+                raise ParseError(
+                    f"{opcode.name} expects 1 operand, got {len(operand_tokens)}",
+                    line_num,
+                )
+            user_label = _parse_target_label(operand_tokens[0], line_num)
+            if user_label not in label_map:
+                raise ParseError(f"Undefined target .{user_label}", line_num)
+            seq_id = label_map[user_label]
+            instructions.append(Instruction(opcode, (seq_id,), line_num))
+            continue
+
+        # All other opcodes: standard operand parsing
         meta = opcode.meta
 
         if len(operand_tokens) != meta.operand_count:

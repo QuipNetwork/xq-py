@@ -286,10 +286,10 @@ class TestSpecificOpcodeMetadata:
         assert meta.operand_types == (OperandType.TARGET,)
 
     def test_target_metadata(self):
-        """TARGET takes target operand."""
+        """TARGET has no operands."""
         meta = Opcode.TARGET.meta
-        assert meta.operand_count == 1
-        assert meta.operand_types == (OperandType.TARGET,)
+        assert meta.operand_count == 0
+        assert meta.operand_types == ()
 
 
 class TestOpcodeCodeProperty:

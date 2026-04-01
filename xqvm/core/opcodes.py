@@ -46,8 +46,8 @@ class Opcode(Enum):
         0x01,
         0,
         0,
-        1,
-        (OperandType.TARGET,),
+        0,
+        (),
         "Define jump target",
     )
     JUMP = OpcodeMeta(

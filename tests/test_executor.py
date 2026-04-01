@@ -54,7 +54,7 @@ class TestControlFlow:
             [
                 Instruction(Opcode.PUSH1, (0,)),  # Counter
                 Instruction(Opcode.STOW, (0,)),
-                Instruction(Opcode.TARGET, (0,)),  # Target 0 - loop start
+                Instruction(Opcode.TARGET, ()),  # Target 0 - loop start
                 Instruction(Opcode.LOAD, (0,)),
                 Instruction(Opcode.PUSH1, (1,)),
                 Instruction(Opcode.ADD),
@@ -78,7 +78,7 @@ class TestControlFlow:
                 Instruction(Opcode.JUMP, (0,)),  # Forward jump to target 0
                 Instruction(Opcode.PUSH1, (99,)),  # Skipped
                 Instruction(Opcode.STOW, (0,)),  # Skipped
-                Instruction(Opcode.TARGET, (0,)),  # Target 0 defined after jump
+                Instruction(Opcode.TARGET, ()),  # Target 0 defined after jump
                 Instruction(Opcode.HALT),
             ]
         )
@@ -92,7 +92,7 @@ class TestControlFlow:
                 Instruction(Opcode.JUMPI, (0,)),  # Forward jump
                 Instruction(Opcode.PUSH1, (99,)),  # Skipped
                 Instruction(Opcode.STOW, (0,)),  # Skipped
-                Instruction(Opcode.TARGET, (0,)),
+                Instruction(Opcode.TARGET, ()),
                 Instruction(Opcode.HALT),
             ]
         )
@@ -103,7 +103,7 @@ class TestControlFlow:
         # Define target first, then conditionally jump to it
         ex = run_program(
             [
-                Instruction(Opcode.TARGET, (0,)),  # Define target 0 here
+                Instruction(Opcode.TARGET, ()),  # Define target 0 here
                 Instruction(Opcode.PUSH1, (42,)),
                 Instruction(Opcode.STOW, (0,)),
                 Instruction(Opcode.PUSH1, (1,)),  # Non-zero condition
@@ -120,7 +120,7 @@ class TestControlFlow:
             [
                 Instruction(Opcode.PUSH1, (99,)),
                 Instruction(Opcode.STOW, (0,)),
-                Instruction(Opcode.TARGET, (0,)),  # Define target first
+                Instruction(Opcode.TARGET, ()),  # Define target first
                 Instruction(Opcode.PUSH1, (0,)),  # Zero condition
                 Instruction(Opcode.JUMPI, (0,)),  # Should not jump (0)
                 Instruction(Opcode.HALT),
@@ -138,7 +138,7 @@ class TestControlFlow:
                 Instruction(Opcode.PUSH1, (0,)),  # Start
                 Instruction(Opcode.PUSH1, (5,)),  # Count
                 Instruction(Opcode.RANGE),
-                Instruction(Opcode.TARGET, (0,)),  # Loop body
+                Instruction(Opcode.TARGET, ()),  # Loop body
                 Instruction(Opcode.LVAL, (1,)),  # i -> r1
                 Instruction(Opcode.LOAD, (0,)),  # Load sum
                 Instruction(Opcode.LOAD, (1,)),  # Load i
@@ -169,7 +169,7 @@ class TestControlFlow:
                 Instruction(Opcode.PUSH1, (0,)),
                 Instruction(Opcode.PUSH1, (3,)),
                 Instruction(Opcode.ITER, (0,)),
-                Instruction(Opcode.TARGET, (0,)),
+                Instruction(Opcode.TARGET, ()),
                 Instruction(Opcode.LVAL, (2,)),  # val -> r2
                 Instruction(Opcode.LOAD, (1,)),  # Load sum
                 Instruction(Opcode.LOAD, (2,)),  # Load val
@@ -188,7 +188,7 @@ class TestControlFlow:
                 Instruction(Opcode.PUSH1, (5,)),  # Start
                 Instruction(Opcode.PUSH1, (1,)),  # Count
                 Instruction(Opcode.RANGE),
-                Instruction(Opcode.TARGET, (0,)),
+                Instruction(Opcode.TARGET, ()),
                 Instruction(Opcode.LVAL, (0,)),  # Store loop value in r0
                 Instruction(Opcode.NEXT),
                 Instruction(Opcode.HALT),

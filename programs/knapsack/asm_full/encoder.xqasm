@@ -1,0 +1,94 @@
+# 0-1 Knapsack Encoder (using PENALTYEQ + SLACK + BITLEN)
+#
+# Cleanest version: SLACK appends directly into the combined
+# indices and coefficients vecs. No intermediate vecs needed.
+#
+# Input:
+#   0: N (int, item count)
+#   1: values (vec<int>)
+#   2: weights (vec<int>)
+#   3: W (int, capacity)
+#   4: P (int, penalty)
+#
+# Output:
+#   0: BQMX model
+#
+# Registers:
+#   r0  = N
+#   r1  = values vec
+#   r2  = weights vec
+#   r3  = W (capacity)
+#   r4  = BQMX model
+#   r5  = P (penalty)
+#   r7  = total_vars
+#   r8  = all_indices vec
+#   r9  = all_coeffs vec
+#   r10 = loop var
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # r0 = N
+PUSH 1
+INPUT r1              # r1 = values
+PUSH 2
+INPUT r2              # r2 = weights
+PUSH 3
+INPUT r3              # r3 = W
+PUSH 4
+INPUT r5              # r5 = P
+
+# === Build combined indices vec [0, 1, ..., N-1] ===
+VECI r8
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  VECPUSH r8
+NEXT
+
+# === Build combined coefficients vec [w0, w1, ...] ===
+VECI r9
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  VECGET r2
+  VECPUSH r9
+NEXT
+
+# === Append slack vars directly into r8 and r9 ===
+LOAD r0               # start_index = N
+LOAD r3               # capacity = W
+SLACK r8 r9            # appends slack indices and coefficients
+
+# === Compute total_vars from vec length ===
+VECLEN r8
+STOW r7               # total_vars = N + S
+
+# === Allocate model ===
+LOAD r7
+BQMX r4
+
+# === Objective: linear[i] -= value[i] ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  LOAD r10
+  VECGET r1
+  NEG
+  ADDLINE r4
+NEXT
+
+# === Capacity constraint ===
+LOAD r5               # P
+LOAD r3               # W
+PENALTYEQ r4 r8 r9
+
+# === Output ===
+PUSH 0
+OUTPUT r4
+HALT

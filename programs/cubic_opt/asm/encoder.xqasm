@@ -1,0 +1,116 @@
+# Cubic Optimization Encoder (existing opcodes)
+#
+# PUBO: H = sum of c_ijk * x_i * x_j * x_k
+# Each cubic term is manually reduced:
+#   Introduce w = x_i * x_j (auxiliary)
+#   Constraint: P_aux * (x_i*x_j - 2*x_i*w - 2*x_j*w + 3*w)
+#   Cubic term becomes: c_ijk * w * x_k
+#
+# Input:
+#   0: N (int, variable count)
+#   1: T (int, number of cubic terms)
+#   2: terms (vec<int>, flat: [i, j, k, coeff, i, j, k, coeff, ...])
+#   3: P_aux (int, auxiliary constraint penalty)
+#
+# Output:
+#   0: BQMX model (N + T variables)
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # N
+PUSH 1
+INPUT r1              # T (term count)
+PUSH 2
+INPUT r2              # terms vec
+PUSH 3
+INPUT r3              # P_aux
+
+# === Allocate model: N + T vars ===
+LOAD r0
+LOAD r1
+ADD
+BQMX r4               # model
+
+# === For each cubic term ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10            # t (term index)
+
+  # Read term: i, j, k, coeff
+  LOAD r10
+  PUSH 4
+  MUL
+  STOW r11            # offset = t * 4
+
+  LOAD r11
+  VECGET r2
+  STOW r12            # i
+
+  LOAD r11
+  INC
+  VECGET r2
+  STOW r13            # j
+
+  LOAD r11
+  PUSH 2
+  ADD
+  VECGET r2
+  STOW r14            # k
+
+  LOAD r11
+  PUSH 3
+  ADD
+  VECGET r2
+  STOW r15            # coeff
+
+  # Auxiliary variable: w = N + t
+  LOAD r0
+  LOAD r10
+  ADD
+  STOW r16            # w_idx
+
+  # === Manual auxiliary constraint ===
+  # P_aux * (x_i*x_j - 2*x_i*w - 2*x_j*w + 3*w)
+
+  # Quadratic x_i*x_j: P_aux
+  LOAD r12
+  LOAD r13
+  LOAD r3
+  ADDQUAD r4
+
+  # Quadratic x_i*w: -2*P_aux
+  LOAD r12
+  LOAD r16
+  LOAD r3
+  PUSH -2
+  MUL
+  ADDQUAD r4
+
+  # Quadratic x_j*w: -2*P_aux
+  LOAD r13
+  LOAD r16
+  LOAD r3
+  PUSH -2
+  MUL
+  ADDQUAD r4
+
+  # Linear w: 3*P_aux
+  LOAD r16
+  LOAD r3
+  PUSH 3
+  MUL
+  ADDLINE r4
+
+  # === Reduced cubic: coeff * w * x_k ===
+  LOAD r16
+  LOAD r14
+  LOAD r15
+  ADDQUAD r4
+
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r4
+HALT

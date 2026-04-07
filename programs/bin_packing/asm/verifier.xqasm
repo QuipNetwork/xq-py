@@ -1,0 +1,137 @@
+# Bin Packing Verifier
+#
+# Input:
+#   0: BQMX model
+#   1: BSMX sample
+#   2: N (item count)
+#   3: B (bin count)
+#   4: weights (vec<int>)
+#   5: C (capacity)
+#
+# Output:
+#   0: energy
+#   1: valid (all binary + one-hot + capacity)
+#   2: bins_used (count of non-empty bins)
+
+# === Load inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2              # N
+PUSH 3
+INPUT r3              # B
+PUSH 4
+INPUT r4              # weights
+PUSH 5
+INPUT r5              # C
+
+# === Initialize ===
+PUSH 1
+STOW r6               # valid = 1
+PUSH 0
+STOW r7               # bins_used = 0
+
+# === Check one-hot per item: each item in exactly one bin ===
+PUSH 0
+LOAD r2
+RANGE
+  LVAL r10            # i (item)
+
+  PUSH 0
+  STOW r8             # row_sum = 0
+
+  PUSH 0
+  LOAD r3
+  RANGE
+    LVAL r11           # b (bin)
+    LOAD r10
+    LOAD r3
+    MUL
+    LOAD r11
+    ADD                # index = i*B + b
+    GETLINE r1         # sample[index]
+    LOAD r8
+    ADD
+    STOW r8
+  NEXT
+
+  # row_sum must be 1
+  LOAD r8
+  PUSH 1
+  EQ
+  LOAD r6
+  AND
+  STOW r6
+NEXT
+
+# === Check capacity per bin + count bins used ===
+PUSH 0
+LOAD r3
+RANGE
+  LVAL r11            # b
+
+  PUSH 0
+  STOW r8             # bin_weight = 0
+  PUSH 0
+  STOW r9             # bin_has_items = 0
+
+  PUSH 0
+  LOAD r2
+  RANGE
+    LVAL r10           # i
+    LOAD r10
+    LOAD r3
+    MUL
+    LOAD r11
+    ADD                # i*B + b
+    GETLINE r1         # sample[i*B + b]
+    STOW r12
+
+    # bin_weight += w_i * x[i,b]
+    LOAD r10
+    VECGET r4          # w_i
+    LOAD r12
+    MUL
+    LOAD r8
+    ADD
+    STOW r8
+
+    # Track if bin has items
+    LOAD r12
+    LOAD r9
+    ADD
+    STOW r9
+  NEXT
+
+  # Check capacity: bin_weight <= C
+  LOAD r8
+  LOAD r5
+  GT                  # bin_weight > C?
+  NOT                 # bin_weight <= C?
+  LOAD r6
+  AND
+  STOW r6
+
+  # Count bins used
+  LOAD r9
+  PUSH 0
+  GT                  # has items?
+  LOAD r7
+  ADD
+  STOW r7
+NEXT
+
+# === Energy ===
+ENERGY r0 r1
+STOW r13
+
+# === Output ===
+PUSH 0
+OUTPUT r13
+PUSH 1
+OUTPUT r6
+PUSH 2
+OUTPUT r7
+HALT

@@ -1,0 +1,208 @@
+# Bin Packing Encoder (existing opcodes)
+#
+# Variables: N*B binary, x[i,b] = 1 means item i in bin b
+# Grid layout: rows = items, cols = bins
+#
+# Constraint 1: ONEHOTR per item (exactly one bin per item)
+# Constraint 2: capacity per bin: sum(w_i * x[i,b]) <= C
+#   Converted to equality with slack vars:
+#   sum(w_i * x[i,b]) + sum(2^j * s[b,j]) = C
+#   Manually expanded with ADDLINE/ADDQUAD
+#
+# Input:
+#   0: N (int, item count)
+#   1: B (int, bin count)
+#   2: weights (vec<int>, item weights)
+#   3: C (int, bin capacity)
+#   4: P_oh (int, one-hot penalty)
+#   5: P_cap (int, capacity penalty)
+#
+# Output:
+#   0: BQMX model
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # N
+PUSH 1
+INPUT r1              # B
+PUSH 2
+INPUT r2              # weights
+PUSH 3
+INPUT r3              # C (capacity)
+PUSH 4
+INPUT r4              # P_oh (one-hot penalty)
+PUSH 5
+INPUT r5              # P_cap (capacity penalty)
+
+# === Compute slack count per bin ===
+LOAD r3
+BITLEN
+STOW r6               # r6 = slacks_per_bin
+
+# === Total vars = N*B + B*slacks_per_bin ===
+LOAD r0
+LOAD r1
+MUL
+STOW r7               # r7 = N*B (item vars)
+
+LOAD r1
+LOAD r6
+MUL
+STOW r8               # r8 = B*slacks_per_bin (slack vars)
+
+LOAD r7
+LOAD r8
+ADD
+STOW r9               # r9 = total_vars
+
+# === Allocate model (grid: rows=N, cols=B) ===
+LOAD r0               # N (rows) - pushed first, popped last by RESIZE
+LOAD r1               # B (cols) - pushed second
+LOAD r9               # total_vars - pushed last, popped first by BQMX
+BQMX r11
+RESIZE r11
+
+# === Constraint 1: ONEHOTR for each item ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10            # row index
+  LOAD r4             # P_oh (penalty)
+  ONEHOTR r11
+NEXT
+
+# === Constraint 2: capacity per bin ===
+# For each bin b:
+#   Build index vec [x[0,b], x[1,b], ..., x[N-1,b], slack_start+0, ...]
+#   Build coeff vec [w_0, w_1, ..., w_{N-1}, 1, 2, 4, ...]
+#   target = C
+#   Expand penalty manually with ADDLINE/ADDQUAD
+
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r12            # b (bin index)
+
+  # Build combined indices and coefficients for this bin
+  VECI r13             # indices
+  VECI r14             # coefficients
+
+  # Add item variables for this bin: x[i,b] = i*B + b
+  PUSH 0
+  LOAD r0
+  RANGE
+    LVAL r10           # i
+    LOAD r10
+    LOAD r1
+    MUL
+    LOAD r12
+    ADD                # index = i*B + b
+    VECPUSH r13
+
+    LOAD r10
+    VECGET r2          # w_i
+    VECPUSH r14
+  NEXT
+
+  # Add slack variables: starting at N*B + b*slacks_per_bin
+  LOAD r7             # N*B
+  LOAD r12            # b
+  LOAD r6             # slacks_per_bin
+  MUL
+  ADD
+  STOW r15            # slack_start for this bin
+
+  PUSH 0
+  LOAD r6
+  RANGE
+    LVAL r10           # j (slack index)
+    LOAD r15
+    LOAD r10
+    ADD
+    VECPUSH r13        # slack var index
+
+    PUSH 1
+    LOAD r10
+    SHL                # 2^j
+    VECPUSH r14        # slack coefficient
+  NEXT
+
+  # === Manual PENALTYEQ expansion ===
+  # Linear: h_k += P * a_k * (a_k - 2*C)
+  # Quadratic: J_k,m += P * 2 * a_k * a_m
+
+  VECLEN r13
+  STOW r16             # total terms
+
+  # Two times capacity
+  LOAD r3
+  PUSH 2
+  MUL
+  STOW r17             # 2*C
+
+  # Linear terms
+  PUSH 0
+  LOAD r16
+  RANGE
+    LVAL r10           # k
+    LOAD r10
+    VECGET r14         # a_k
+    STOW r18
+
+    LOAD r10
+    VECGET r13         # var index k
+
+    LOAD r5            # P_cap
+    LOAD r18           # a_k
+    MUL
+    LOAD r18           # a_k
+    LOAD r17           # 2*C
+    SUB                # a_k - 2*C
+    MUL                # P * a_k * (a_k - 2*C)
+    ADDLINE r11
+  NEXT
+
+  # Quadratic terms
+  PUSH 0
+  LOAD r16
+  DEC                  # outer: k = 0 to total-2
+  RANGE
+    LVAL r10           # k
+    LOAD r10
+    VECGET r14
+    STOW r18           # a_k
+
+    LOAD r10
+    INC               # inner start = k+1
+    LOAD r16
+    LOAD r10
+    SUB
+    DEC               # inner count = total - k - 1
+    RANGE
+      LVAL r19         # m
+      LOAD r19
+      VECGET r14
+      STOW r20         # a_m
+
+      LOAD r10
+      VECGET r13       # var index k
+      LOAD r19
+      VECGET r13       # var index m
+
+      LOAD r5          # P_cap
+      PUSH 2
+      MUL              # 2*P
+      LOAD r18         # a_k
+      MUL              # 2*P*a_k
+      LOAD r20         # a_m
+      MUL              # 2*P*a_k*a_m
+      ADDQUAD r11
+    NEXT
+  NEXT
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r11
+HALT

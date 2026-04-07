@@ -1,0 +1,93 @@
+# Portfolio Optimization Verifier
+#
+# Validates a portfolio solution sample:
+#   1. All asset variables are binary (0 or 1)
+#   2. Computes energy
+#
+# This is an unconstrained problem (pure objective),
+# so any binary assignment is feasible. The verifier
+# checks binary-ness and computes energy.
+#
+# Input:
+#   0: BQMX model (from encoder)
+#   1: BSMX sample (solution to verify)
+#   2: N (int, asset count)
+#   3: returns (vec<int>)
+#
+# Output:
+#   0: energy (int)
+#   1: valid flag (1 = valid, 0 = invalid)
+#   2: portfolio_return (int, sum of returns for selected assets)
+#
+# Registers:
+#   r0  = model
+#   r1  = sample
+#   r2  = valid flag
+#   r3  = N
+#   r4  = returns vec
+#   r5  = energy
+#   r6  = portfolio_return
+#   r10 = loop var
+#   r11 = current sample value
+
+# === Load inputs ===
+PUSH 0
+INPUT r0              # r0 = model
+PUSH 1
+INPUT r1              # r1 = sample
+PUSH 2
+INPUT r3              # r3 = N
+PUSH 3
+INPUT r4              # r4 = returns
+
+# === Initialize ===
+PUSH 1
+STOW r2               # valid = 1
+PUSH 0
+STOW r6               # portfolio_return = 0
+
+# === Check asset variables are binary + compute return ===
+PUSH 0
+LOAD r3
+RANGE
+  LVAL r10            # i
+
+  # Read sample[i]
+  LOAD r10
+  GETLINE r1          # push sample[i]
+  STOW r11            # r11 = sample[i]
+
+  # Check binary: sample[i] == 0 OR sample[i] == 1
+  LOAD r11
+  PUSH 0
+  EQ                  # == 0?
+  LOAD r11
+  PUSH 1
+  EQ                  # == 1?
+  OR                  # is 0 or 1?
+  LOAD r2
+  AND
+  STOW r2             # valid &= check
+
+  # Accumulate return: portfolio_return += sample[i] * returns[i]
+  LOAD r11            # sample[i]
+  LOAD r10
+  VECGET r4           # returns[i]
+  MUL                 # sample[i] * returns[i]
+  LOAD r6
+  ADD
+  STOW r6             # portfolio_return += result
+NEXT
+
+# === Compute energy ===
+ENERGY r0 r1
+STOW r5
+
+# === Output ===
+PUSH 0
+OUTPUT r5              # output[0] = energy
+PUSH 1
+OUTPUT r2              # output[1] = valid flag
+PUSH 2
+OUTPUT r6              # output[2] = portfolio_return
+HALT

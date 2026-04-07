@@ -1,0 +1,100 @@
+# Maximum Independent Set Encoder (using PENALTYEQ + SLACK)
+#
+# Same formulation but PENALTYEQ + SLACK handles each edge constraint.
+#
+# Input:
+#   0: N (int, vertex count)
+#   1: E (int, edge count)
+#   2: edges (vec<int>, flat: [i, j, i, j, ...])
+#   3: A (int, selection reward)
+#   4: P (int, edge penalty)
+#
+# Output:
+#   0: BQMX model
+
+# === Read inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+PUSH 3
+INPUT r3
+PUSH 4
+INPUT r4
+
+# === Allocate model: N + E vars ===
+LOAD r0
+LOAD r1
+ADD
+BQMX r5
+
+# === Objective: -A * x_i ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  LOAD r3
+  NEG
+  ADDLINE r5
+NEXT
+
+# === Edge constraints using PENALTYEQ + SLACK ===
+LOAD r0
+STOW r6               # next_slack = N
+
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10
+
+  LOAD r10
+  PUSH 2
+  MUL
+  STOW r7             # offset
+
+  LOAD r7
+  VECGET r2
+  STOW r8             # i
+
+  LOAD r7
+  INC
+  VECGET r2
+  STOW r9             # j
+
+  # Build indices [i, j] and coeffs [1, 1]
+  VECI r11
+  LOAD r8
+  VECPUSH r11
+  LOAD r9
+  VECPUSH r11
+
+  VECI r12
+  PUSH 1
+  VECPUSH r12
+  PUSH 1
+  VECPUSH r12
+
+  # SLACK: append slack var and coefficient
+  LOAD r6             # slack start index
+  PUSH 1              # capacity = 1 (max excess is 1)
+  SLACK r11 r12       # appends slack idx and coeff to vecs
+
+  # Advance slack index
+  LOAD r6
+  INC
+  STOW r6
+
+  # PENALTYEQ: P * (x_i + x_j + s - 1)^2
+  LOAD r4             # P
+  PUSH 1              # target = 1
+  PENALTYEQ r5 r11 r12
+
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r5
+HALT

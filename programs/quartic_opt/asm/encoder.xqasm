@@ -1,0 +1,151 @@
+# Quartic Optimization Encoder (existing opcodes)
+#
+# H = sum of c_ijkl * x_i * x_j * x_k * x_l
+# Each quartic term needs two auxiliary variables:
+#   w1 = x_i * x_j
+#   w2 = w1 * x_k
+#   Then: c * w2 * x_l (quadratic)
+#
+# Input:
+#   0: N (int, variable count)
+#   1: T (int, number of quartic terms)
+#   2: terms (vec<int>, flat: [i, j, k, l, coeff, ...])
+#   3: P_aux (int, auxiliary constraint penalty)
+#
+# Output:
+#   0: BQMX model (N + 2*T variables)
+
+# === Read inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+PUSH 3
+INPUT r3
+
+# === Allocate model: N + 2*T vars ===
+LOAD r0
+LOAD r1
+PUSH 2
+MUL
+ADD
+BQMX r4
+
+# === For each quartic term ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10            # t
+
+  # Read term: i, j, k, l, coeff
+  LOAD r10
+  PUSH 5
+  MUL
+  STOW r11            # offset = t * 5
+
+  LOAD r11
+  VECGET r2
+  STOW r12            # i
+  LOAD r11
+  INC
+  VECGET r2
+  STOW r13            # j
+  LOAD r11
+  PUSH 2
+  ADD
+  VECGET r2
+  STOW r14            # k
+  LOAD r11
+  PUSH 3
+  ADD
+  VECGET r2
+  STOW r15            # l
+  LOAD r11
+  PUSH 4
+  ADD
+  VECGET r2
+  STOW r16            # coeff
+
+  # w1 = N + 2*t
+  LOAD r0
+  LOAD r10
+  PUSH 2
+  MUL
+  ADD
+  STOW r17            # w1_idx
+
+  # w2 = N + 2*t + 1
+  LOAD r17
+  INC
+  STOW r18            # w2_idx
+
+  # === First auxiliary: w1 = x_i * x_j ===
+  # P_aux * (x_i*x_j - 2*x_i*w1 - 2*x_j*w1 + 3*w1)
+
+  LOAD r12
+  LOAD r13
+  LOAD r3
+  ADDQUAD r4          # P_aux * x_i * x_j
+
+  LOAD r12
+  LOAD r17
+  LOAD r3
+  PUSH -2
+  MUL
+  ADDQUAD r4          # -2*P_aux * x_i * w1
+
+  LOAD r13
+  LOAD r17
+  LOAD r3
+  PUSH -2
+  MUL
+  ADDQUAD r4          # -2*P_aux * x_j * w1
+
+  LOAD r17
+  LOAD r3
+  PUSH 3
+  MUL
+  ADDLINE r4          # 3*P_aux * w1
+
+  # === Second auxiliary: w2 = w1 * x_k ===
+  # P_aux * (w1*x_k - 2*w1*w2 - 2*x_k*w2 + 3*w2)
+
+  LOAD r17
+  LOAD r14
+  LOAD r3
+  ADDQUAD r4          # P_aux * w1 * x_k
+
+  LOAD r17
+  LOAD r18
+  LOAD r3
+  PUSH -2
+  MUL
+  ADDQUAD r4          # -2*P_aux * w1 * w2
+
+  LOAD r14
+  LOAD r18
+  LOAD r3
+  PUSH -2
+  MUL
+  ADDQUAD r4          # -2*P_aux * x_k * w2
+
+  LOAD r18
+  LOAD r3
+  PUSH 3
+  MUL
+  ADDLINE r4          # 3*P_aux * w2
+
+  # === Reduced quartic: coeff * w2 * x_l ===
+  LOAD r18
+  LOAD r15
+  LOAD r16
+  ADDQUAD r4
+
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r4
+HALT

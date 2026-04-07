@@ -1,0 +1,94 @@
+# Vertex Cover Encoder (using ATLEAST)
+#
+# Same formulation as the verbose encoder, but uses ATLEAST
+# to apply edge constraints in one opcode per edge.
+#
+# Input:
+#   0: N (int, vertex count)
+#   1: edges (vec<int>, flat pairs [i, j, i, j, ...])
+#   2: A (int, vertex cost weight)
+#   3: B (int, edge constraint penalty)
+#
+# Output:
+#   0: BQMX model (N variables)
+#
+# Registers:
+#   r0  = N
+#   r1  = edges vec
+#   r2  = A (vertex cost)
+#   r3  = B (edge penalty)
+#   r4  = BQMX model
+#   r5  = edge count
+#   r6  = edge vars vec (reused per edge)
+#   r10 = loop var
+#   r11 = i (edge source)
+#   r12 = j (edge target)
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # r0 = N
+PUSH 1
+INPUT r1              # r1 = edges vec
+PUSH 2
+INPUT r2              # r2 = A
+PUSH 3
+INPUT r3              # r3 = B
+
+# === Compute edge count ===
+VECLEN r1
+PUSH 2
+DIV
+STOW r5               # r5 = edge_count
+
+# === Allocate model ===
+LOAD r0
+BQMX r4               # r4 = BQMX(N)
+
+# === Objective: linear[i] += A for each vertex ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  LOAD r2
+  ADDLINE r4
+NEXT
+
+# === Edge constraints: ATLEAST 1 per edge ===
+PUSH 0
+LOAD r5
+RANGE
+  LVAL r10            # e
+
+  # offset = e * 2
+  LOAD r10
+  PUSH 2
+  MUL
+
+  # i = edges[offset]
+  COPY
+  VECGET r1
+  STOW r11
+
+  # j = edges[offset + 1]
+  INC
+  VECGET r1
+  STOW r12
+
+  # Build edge vars vec [i, j]
+  VECI r6
+  LOAD r11
+  VECPUSH r6
+  LOAD r12
+  VECPUSH r6
+
+  # ATLEAST 1 with penalty B
+  LOAD r3             # B (penalty)
+  PUSH 1              # k = 1
+  ATLEAST r4 r6
+NEXT
+
+# === Output model ===
+PUSH 0
+OUTPUT r4
+HALT

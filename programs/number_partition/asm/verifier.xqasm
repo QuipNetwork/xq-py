@@ -1,0 +1,111 @@
+# Number Partitioning Verifier
+#
+# Validates:
+#   1. All variables are binary
+#   2. Computes subset sums and difference
+#   3. Computes energy
+#
+# Input:
+#   0: BQMX model
+#   1: BSMX sample
+#   2: N (element count)
+#   3: elements (vec<int>)
+#
+# Output:
+#   0: energy
+#   1: valid flag (1 = all binary)
+#   2: difference (|sum_A - sum_B|)
+
+# === Load inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+PUSH 3
+INPUT r3
+
+# === Initialize ===
+PUSH 1
+STOW r4               # valid = 1
+PUSH 0
+STOW r5               # sum_A = 0
+PUSH 0
+STOW r6               # sum_B = 0
+
+# === Check binary + compute sums ===
+PUSH 0
+LOAD r2
+RANGE
+  LVAL r10
+  LOAD r10
+  GETLINE r1          # sample[i]
+  STOW r7             # r7 = val
+
+  # Check binary
+  LOAD r7
+  PUSH 0
+  EQ
+  LOAD r7
+  PUSH 1
+  EQ
+  OR
+  LOAD r4
+  AND
+  STOW r4
+
+  # Get element value
+  LOAD r10
+  VECGET r3
+  STOW r8             # r8 = elements[i]
+
+  # If selected (val=1): sum_A += elements[i]
+  # Else: sum_B += elements[i]
+  LOAD r7
+  PUSH 1
+  EQ
+  NOT
+  JUMPI .0
+  LOAD r8
+  LOAD r5
+  ADD
+  STOW r5
+  JUMP .1
+  TARGET .0
+  LOAD r8
+  LOAD r6
+  ADD
+  STOW r6
+  TARGET .1
+NEXT
+
+# === Compute difference |sum_A - sum_B| ===
+LOAD r5
+LOAD r6
+SUB
+STOW r8               # diff = sum_A - sum_B
+
+# Absolute value
+LOAD r8
+PUSH 0
+GTE
+  NOT
+  JUMPI .2
+  LOAD r8
+  NEG
+  STOW r8
+TARGET .2
+
+# === Compute energy ===
+ENERGY r0 r1
+STOW r9
+
+# === Output ===
+PUSH 0
+OUTPUT r9
+PUSH 1
+OUTPUT r4
+PUSH 2
+OUTPUT r8
+HALT

@@ -1,0 +1,199 @@
+# Portfolio Optimization Encoder (using REDUCE)
+#
+# Same formulation but REDUCE handles cubic and quartic degree reduction.
+#
+# Input:
+#   0: N (int, number of assets)
+#   1: returns (vec<int>)
+#   2: covariance (vec<int>, flat upper triangle)
+#   3: skewness_terms (vec<int>, flat: [i, j, k, coeff, ...])
+#   4: kurtosis_terms (vec<int>, flat: [i, j, k, l, coeff, ...])
+#   5: num_skew (int)
+#   6: num_kurt (int)
+#   7: P_aux (int)
+#
+# Output:
+#   0: BQMX model
+
+# === Read inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+PUSH 3
+INPUT r3
+PUSH 4
+INPUT r4
+PUSH 5
+INPUT r5
+PUSH 6
+INPUT r6
+PUSH 7
+INPUT r7
+
+# === Allocate model (REDUCE extends as needed) ===
+LOAD r0
+BQMX r9
+
+# === Linear: returns ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  LOAD r10
+  VECGET r1
+  ADDLINE r9
+NEXT
+
+# === Quadratic: covariance ===
+PUSH 0
+STOW r11
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10            # start = i
+  LOAD r0
+  LOAD r10
+  SUB                 # count = N - i
+  RANGE
+    LVAL r12
+
+    LOAD r11
+    VECGET r2
+    STOW r13
+
+    LOAD r13
+    PUSH 0
+    EQ
+    NOT
+    JUMPI .0
+
+    LOAD r10
+    LOAD r12
+    EQ
+    NOT
+    JUMPI .1
+    LOAD r10
+    LOAD r13
+    ADDLINE r9
+    JUMP .2
+    TARGET .1
+    LOAD r10
+    LOAD r12
+    LOAD r13
+    ADDQUAD r9
+    TARGET .2
+
+    TARGET .0
+    LOAD r11
+    INC
+    STOW r11
+  NEXT
+NEXT
+
+# === Cubic: skewness with REDUCE ===
+PUSH 0
+LOAD r5
+RANGE
+  LVAL r10
+
+  LOAD r10
+  PUSH 4
+  MUL
+  STOW r11
+
+  LOAD r11
+  VECGET r3
+  STOW r15            # i
+  LOAD r11
+  INC
+  VECGET r3
+  STOW r16            # j
+  LOAD r11
+  PUSH 2
+  ADD
+  VECGET r3
+  STOW r17            # k
+  LOAD r11
+  PUSH 3
+  ADD
+  VECGET r3
+  STOW r18            # coeff
+
+  # REDUCE: w = x_i * x_j
+  LOAD r15
+  LOAD r16
+  LOAD r7
+  REDUCE r9
+  STOW r14            # w
+
+  # Reduced: coeff * w * x_k
+  LOAD r14
+  LOAD r17
+  LOAD r18
+  ADDQUAD r9
+NEXT
+
+# === Quartic: kurtosis with chained REDUCE ===
+PUSH 0
+LOAD r6
+RANGE
+  LVAL r10
+
+  LOAD r10
+  PUSH 5
+  MUL
+  STOW r11
+
+  LOAD r11
+  VECGET r4
+  STOW r15            # i
+  LOAD r11
+  INC
+  VECGET r4
+  STOW r16            # j
+  LOAD r11
+  PUSH 2
+  ADD
+  VECGET r4
+  STOW r17            # k
+  LOAD r11
+  PUSH 3
+  ADD
+  VECGET r4
+  STOW r18            # l
+  LOAD r11
+  PUSH 4
+  ADD
+  VECGET r4
+  STOW r19            # coeff
+
+  # First REDUCE: w1 = x_i * x_j
+  LOAD r15
+  LOAD r16
+  LOAD r7
+  REDUCE r9
+  STOW r20            # w1
+
+  # Second REDUCE: w2 = w1 * x_k
+  LOAD r20
+  LOAD r17
+  LOAD r7
+  REDUCE r9
+  STOW r21            # w2
+
+  # Reduced: coeff * w2 * x_l
+  LOAD r21
+  LOAD r18
+  LOAD r19
+  ADDQUAD r9
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r9
+HALT

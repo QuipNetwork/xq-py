@@ -1,0 +1,43 @@
+# Graph Coloring Decoder — Binary encoding
+#
+# Input:
+#   0: BSMX sample
+#   1: N (vertex count)
+#
+# Output:
+#   0: coloring (vec<int>)
+
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+
+VECI r2
+
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10
+
+  # color = bit0 + 2*bit1
+  LOAD r10
+  PUSH 2
+  MUL
+  GETLINE r0          # bit0
+  STOW r3
+
+  LOAD r10
+  PUSH 2
+  MUL
+  INC
+  GETLINE r0          # bit1
+  PUSH 2
+  MUL
+  LOAD r3
+  ADD                 # color
+  VECPUSH r2
+NEXT
+
+PUSH 0
+OUTPUT r2
+HALT

@@ -1,0 +1,55 @@
+# Number Partitioning Decoder
+#
+# Extracts the two subsets from the solution.
+#
+# Input:
+#   0: BSMX sample
+#   1: N (element count)
+#   2: elements (vec<int>)
+#
+# Output:
+#   0: subset_A (vec<int>, elements where x_i = 1)
+#   1: subset_B (vec<int>, elements where x_i = 0)
+
+# === Load inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+
+# === Create output vecs ===
+VECI r3                # subset_A
+VECI r4                # subset_B
+
+# === Partition ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10
+  LOAD r10
+  GETLINE r0          # sample[i]
+  PUSH 1
+  EQ
+  NOT
+  JUMPI .0
+  # Selected: add to A
+  LOAD r10
+  VECGET r2
+  VECPUSH r3
+  JUMP .1
+  TARGET .0
+  # Not selected: add to B
+  LOAD r10
+  VECGET r2
+  VECPUSH r4
+  TARGET .1
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r3
+PUSH 1
+OUTPUT r4
+HALT

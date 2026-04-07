@@ -1,0 +1,37 @@
+# Set Cover Decoder
+#
+# Input:
+#   0: BSMX sample
+#   1: M (number of subsets)
+#
+# Output:
+#   0: selected subsets (vec<int> of subset indices)
+
+# === Load inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+
+# === Build selected list ===
+VECI r2
+
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10
+  LOAD r10
+  GETLINE r0
+  PUSH 1
+  EQ
+  NOT
+  JUMPI .0
+  LOAD r10
+  VECPUSH r2
+  TARGET .0
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r2
+HALT

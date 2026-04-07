@@ -1,0 +1,46 @@
+# Vertex Cover Decoder
+#
+# Extracts the list of selected vertices from a Vertex Cover solution.
+#
+# Input:
+#   0: BSMX sample
+#   1: N (int, vertex count)
+#
+# Output:
+#   0: selected vertices as vec<int>
+#
+# Registers:
+#   r0  = sample
+#   r1  = N
+#   r2  = selected vec
+#   r10 = loop var
+
+# === Load inputs ===
+PUSH 0
+INPUT r0              # r0 = sample
+PUSH 1
+INPUT r1              # r1 = N
+
+# === Create output vec ===
+VECI r2                # r2 = vec<int>
+
+# === For each vertex: if selected, append index ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10            # i
+  LOAD r10
+  GETLINE r0          # sample[i]
+  PUSH 1
+  EQ                  # selected?
+  NOT
+  JUMPI .0            # skip if not
+  LOAD r10
+  VECPUSH r2          # append to cover
+  TARGET .0
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r2
+HALT

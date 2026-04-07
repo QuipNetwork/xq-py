@@ -1,0 +1,102 @@
+# Maximum Independent Set Verifier
+#
+# Input:
+#   0: BQMX model
+#   1: BSMX sample
+#   2: N (vertex count)
+#   3: E (edge count)
+#   4: edges (vec<int>)
+#
+# Output:
+#   0: energy
+#   1: valid (all binary + no adjacent selected)
+#   2: set_size (number of selected vertices)
+
+# === Load inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+PUSH 3
+INPUT r3
+PUSH 4
+INPUT r4
+
+# === Check binary + count selected ===
+PUSH 1
+STOW r5               # valid = 1
+PUSH 0
+STOW r6               # set_size = 0
+
+PUSH 0
+LOAD r2
+RANGE
+  LVAL r10
+  LOAD r10
+  GETLINE r1
+  STOW r7
+
+  LOAD r7
+  PUSH 0
+  EQ
+  LOAD r7
+  PUSH 1
+  EQ
+  OR
+  LOAD r5
+  AND
+  STOW r5
+
+  LOAD r7
+  LOAD r6
+  ADD
+  STOW r6
+NEXT
+
+# === Check independence: no edge has both endpoints selected ===
+PUSH 0
+LOAD r3
+RANGE
+  LVAL r10
+
+  LOAD r10
+  PUSH 2
+  MUL
+  STOW r7
+
+  LOAD r7
+  VECGET r4
+  GETLINE r1          # sample[i]
+  STOW r8
+
+  LOAD r7
+  INC
+  VECGET r4
+  GETLINE r1          # sample[j]
+  STOW r9
+
+  # If both selected, invalid
+  LOAD r8
+  LOAD r9
+  MUL                 # 1 only if both selected
+  PUSH 0
+  EQ                  # 1 if independent, 0 if both selected
+  LOAD r5
+  AND
+  STOW r5
+NEXT
+
+# === Energy ===
+ENERGY r0 r1
+STOW r11
+
+# === Output ===
+PUSH 0
+OUTPUT r11
+PUSH 1
+OUTPUT r5
+PUSH 2
+OUTPUT r6
+HALT

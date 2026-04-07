@@ -1,0 +1,69 @@
+# Number Partitioning Encoder (using PENALTYEQ)
+#
+# QUBO: P * (sum(s_i * x_i) - T/2)^2
+#
+# This is directly PENALTYEQ with:
+#   indices = [0, 1, ..., N-1]
+#   coefficients = elements
+#   target = T/2
+#   penalty = P
+#
+# Input:
+#   0: N (int, element count)
+#   1: elements (vec<int>, the set S)
+#   2: P (int, penalty weight)
+#
+# Output:
+#   0: BQMX model (N variables)
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # r0 = N
+PUSH 1
+INPUT r1              # r1 = elements vec (also serves as coefficients)
+PUSH 2
+INPUT r2              # r2 = P
+
+# === Compute T = sum of all elements ===
+PUSH 0
+STOW r3               # r3 = T
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  VECGET r1
+  LOAD r3
+  ADD
+  STOW r3
+NEXT
+
+# === Compute target = T / 2 ===
+LOAD r3
+PUSH 2
+DIV
+STOW r4               # r4 = target
+
+# === Build indices vec [0, 1, ..., N-1] ===
+VECI r5                # r5 = indices vec
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  VECPUSH r5
+NEXT
+
+# === Allocate model ===
+LOAD r0
+BQMX r6               # r6 = model
+
+# === PENALTYEQ: P * (sum(elements[k] * x_k) - target)^2 ===
+LOAD r2               # P (penalty)
+LOAD r4               # target (T/2)
+PENALTYEQ r6 r5 r1    # model, indices, coefficients
+
+# === Output ===
+PUSH 0
+OUTPUT r6
+HALT

@@ -1,0 +1,135 @@
+# 0-1 Knapsack Encoder (using PENALTYEQ)
+#
+# Same problem as the verbose encoder, but uses the PENALTYEQ
+# high-level opcode to expand the capacity constraint in one call.
+#
+# QUBO formulation:
+#   Objective: minimize -sum(v_i * x_i)
+#   Constraint: PENALTYEQ expands P*(sum(a_k*y_k) - W)^2
+#     where y_k = item vars + slack vars, a_k = weights + powers of 2
+#
+# Input:
+#   0: N (int, item count)
+#   1: values (vec<int>)
+#   2: weights (vec<int>)
+#   3: W (int, capacity)
+#   4: P (int, penalty)
+#
+# Output:
+#   0: BQMX model
+#
+# Registers:
+#   r0  = N
+#   r1  = values vec
+#   r2  = weights vec
+#   r3  = W (capacity)
+#   r4  = BQMX model
+#   r5  = P (penalty)
+#   r6  = S (slack var count)
+#   r7  = total_vars (N + S)
+#   r8  = all_indices vec
+#   r9  = all_coeffs vec
+#   r10 = loop var
+#   r14 = temp
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # r0 = N
+PUSH 1
+INPUT r1              # r1 = values
+PUSH 2
+INPUT r2              # r2 = weights
+PUSH 3
+INPUT r3              # r3 = W
+PUSH 4
+INPUT r5              # r5 = P
+
+# === Compute S = floor(log2(W)) + 1 ===
+LOAD r3
+STOW r14              # temp = W
+PUSH 0
+STOW r6               # S = 0
+TARGET .0
+  LOAD r14
+  PUSH 0
+  GT
+  NOT
+  JUMPI .1
+  LOAD r14
+  PUSH 2
+  DIV
+  STOW r14
+  LOAD r6
+  INC
+  STOW r6
+  JUMP .0
+TARGET .1
+
+# === total_vars = N + S ===
+LOAD r0
+LOAD r6
+ADD
+STOW r7
+
+# === Allocate model ===
+LOAD r7
+BQMX r4
+
+# === Build indices vec [0, 1, 2, ..., N+S-1] ===
+VECI r8
+PUSH 0
+LOAD r7
+RANGE
+  LVAL r10
+  LOAD r10
+  VECPUSH r8
+NEXT
+
+# === Build coefficients vec [w0, w1, ..., 1, 2, 4, ...] ===
+VECI r9
+
+# Item weights
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  VECGET r2
+  VECPUSH r9
+NEXT
+
+# Slack powers of 2
+PUSH 1
+STOW r14              # power = 1
+PUSH 0
+LOAD r6
+RANGE
+  LOAD r14
+  VECPUSH r9
+  LOAD r14
+  PUSH 2
+  MUL
+  STOW r14
+NEXT
+
+# === Objective: linear[i] -= value[i] ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  LOAD r10
+  VECGET r1
+  NEG
+  ADDLINE r4
+NEXT
+
+# === Capacity constraint: ONE opcode ===
+LOAD r5               # P (penalty)
+LOAD r3               # W (target)
+PENALTYEQ r4 r8 r9    # expand P*(sum(a_k*x_k) - W)^2
+
+# === Output ===
+PUSH 0
+OUTPUT r4
+HALT

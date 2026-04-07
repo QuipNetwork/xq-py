@@ -1,0 +1,47 @@
+# 0-1 Knapsack Decoder
+#
+# Extracts the list of selected items from a Knapsack solution sample.
+# Reads the first N variables (item variables, ignoring slacks).
+#
+# Input:
+#   0: BSMX sample
+#   1: N (int, item count)
+#
+# Output:
+#   0: selected items as vec<int> (indices of selected items)
+#
+# Registers:
+#   r0  = sample
+#   r1  = N
+#   r2  = selected vec
+#   r10 = loop var (item index)
+
+# === Load inputs ===
+PUSH 0
+INPUT r0              # r0 = sample
+PUSH 1
+INPUT r1              # r1 = N
+
+# === Create output vec ===
+VECI r2                # r2 = vec<int>
+
+# === For each item i in [0, N): if selected, append index ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10            # i
+  LOAD r10
+  GETLINE r0          # sample[i]
+  PUSH 1
+  EQ                  # sample[i] == 1?
+  NOT
+  JUMPI .0            # skip if not selected
+  LOAD r10
+  VECPUSH r2          # append index to selected
+  TARGET .0
+NEXT
+
+# === Output selected items ===
+PUSH 0
+OUTPUT r2
+HALT

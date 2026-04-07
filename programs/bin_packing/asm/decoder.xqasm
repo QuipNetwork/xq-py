@@ -1,0 +1,57 @@
+# Bin Packing Decoder
+#
+# Input:
+#   0: BSMX sample
+#   1: N (item count)
+#   2: B (bin count)
+#
+# Output:
+#   0: assignment vec (item i -> bin index)
+
+# === Load inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+
+# === Build assignment ===
+VECI r3
+
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10            # i (item)
+
+  # Find which bin has x[i,b] = 1
+  PUSH -1
+  STOW r4             # assigned_bin = -1
+
+  PUSH 0
+  LOAD r2
+  RANGE
+    LVAL r11           # b
+    LOAD r10
+    LOAD r2
+    MUL
+    LOAD r11
+    ADD
+    GETLINE r0         # sample[i*B + b]
+    PUSH 1
+    EQ
+    NOT
+    JUMPI .0
+    LOAD r11
+    STOW r4            # assigned_bin = b
+    TARGET .0
+  NEXT
+
+  LOAD r4
+  VECPUSH r3
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r3
+HALT

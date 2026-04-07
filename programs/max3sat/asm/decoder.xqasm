@@ -1,0 +1,40 @@
+# Max-3-SAT Decoder
+#
+# Extracts the variable assignment from a Max-3-SAT solution.
+# Only outputs the original N variables, not the auxiliary ones.
+#
+# Input:
+#   0: BSMX sample
+#   1: N (int, original variable count)
+#
+# Output:
+#   0: assignment as vec<int> (values 0 or 1 for each variable)
+#
+# Registers:
+#   r0  = sample
+#   r1  = N
+#   r2  = assignment vec
+#   r10 = loop var
+
+# === Load inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+
+# === Build assignment vec ===
+VECI r2
+
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10
+  LOAD r10
+  GETLINE r0
+  VECPUSH r2
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r2
+HALT

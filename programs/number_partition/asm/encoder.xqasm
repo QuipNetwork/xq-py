@@ -1,0 +1,116 @@
+# Number Partitioning Encoder (existing opcodes)
+#
+# QUBO: P * (sum(s_i * x_i) - T/2)^2
+#
+# Expansion:
+#   Linear:    h_k += P * a_k * (a_k - 2*b)
+#   Quadratic: J_k,m += P * 2 * a_k * a_m  for all k < m
+#
+# Input:
+#   0: N (int, element count)
+#   1: elements (vec<int>)
+#   2: P (int, penalty weight)
+#
+# Output:
+#   0: BQMX model (N variables)
+
+# === Read inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+
+# === Compute T = sum of all elements ===
+PUSH 0
+STOW r3
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  VECGET r1
+  LOAD r3
+  ADD
+  STOW r3
+NEXT
+
+# === target = T / 2, two_target = T ===
+LOAD r3
+PUSH 2
+DIV
+STOW r4               # r4 = target (T/2)
+
+LOAD r4
+PUSH 2
+MUL
+STOW r5               # r5 = 2 * target
+
+# === Allocate model ===
+LOAD r0
+BQMX r6
+
+# === Linear terms: h_k = P * a_k * (a_k - 2*target) ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  VECGET r1
+  STOW r7             # r7 = a_k
+
+  LOAD r10            # var index
+  LOAD r2             # P
+  LOAD r7             # a_k
+  MUL                 # P * a_k
+  LOAD r7             # a_k
+  LOAD r5             # 2 * target
+  SUB                 # a_k - 2*target
+  MUL                 # P * a_k * (a_k - 2*target)
+  ADDLINE r6
+NEXT
+
+# === Quadratic terms: J_k,m = P * 2 * a_k * a_m ===
+# Outer loop: k = 0 to N-1
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10            # k
+  LOAD r10
+  VECGET r1
+  STOW r7             # r7 = a_k
+
+  # Inner loop: m = k+1 to N-1
+  # start = k+1, count = N - k - 1
+  LOAD r10
+  INC                 # start = k+1
+
+  LOAD r0
+  LOAD r10
+  SUB
+  DEC                 # count = N - k - 1
+
+  RANGE
+    LVAL r11          # m
+    LOAD r11
+    VECGET r1
+    STOW r8           # r8 = a_m
+
+    LOAD r10          # var k
+    LOAD r11          # var m
+    LOAD r2           # P
+    PUSH 2
+    MUL               # 2*P
+    LOAD r7           # a_k
+    MUL               # 2*P*a_k
+    LOAD r8           # a_m
+    MUL               # 2*P*a_k*a_m
+    ADDQUAD r6
+  NEXT
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r6
+HALT

@@ -1,0 +1,123 @@
+# Maximum Independent Set Encoder (existing opcodes)
+#
+# Objective: minimize -A * sum(x_i)  [maximize selected vertices]
+# Constraint: for each edge (i,j): x_i + x_j <= 1
+#   Equality form: x_i + x_j + s = 1 (one slack bit per edge)
+#   Manual expansion of P * (x_i + x_j + s - 1)^2:
+#     Linear:  P*(1-2)*x_i = -P*x_i, same for x_j and s
+#     Quad:    P*2*x_i*x_j, P*2*x_i*s, P*2*x_j*s
+#
+# Input:
+#   0: N (int, vertex count)
+#   1: E (int, edge count)
+#   2: edges (vec<int>, flat: [i, j, i, j, ...])
+#   3: A (int, selection reward)
+#   4: P (int, edge penalty)
+#
+# Output:
+#   0: BQMX model (N + E variables: N vertices + E slack bits)
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # N
+PUSH 1
+INPUT r1              # E
+PUSH 2
+INPUT r2              # edges
+PUSH 3
+INPUT r3              # A
+PUSH 4
+INPUT r4              # P
+
+# === Allocate model: N + E vars ===
+LOAD r0
+LOAD r1
+ADD
+BQMX r5
+
+# === Objective: -A * x_i for each vertex ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  LOAD r3
+  NEG                 # -A
+  ADDLINE r5
+NEXT
+
+# === Edge constraints: P * (x_i + x_j + s - 1)^2 ===
+# Expansion with coefficients [1, 1, 1] and target 1:
+#   Linear:  P * a_k * (a_k - 2) = P * 1 * (1-2) = -P  for each of 3 vars
+#   Quad:    P * 2 * a_k * a_m = 2P  for each pair
+
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10            # edge index e
+
+  # Read edge endpoints
+  LOAD r10
+  PUSH 2
+  MUL
+  STOW r6             # offset = e * 2
+
+  LOAD r6
+  VECGET r2
+  STOW r7             # i
+
+  LOAD r6
+  INC
+  VECGET r2
+  STOW r8             # j
+
+  # Slack variable index: N + e
+  LOAD r0
+  LOAD r10
+  ADD
+  STOW r9             # s_idx
+
+  # Linear: -P for x_i, x_j, s
+  LOAD r7
+  LOAD r4
+  NEG
+  ADDLINE r5
+
+  LOAD r8
+  LOAD r4
+  NEG
+  ADDLINE r5
+
+  LOAD r9
+  LOAD r4
+  NEG
+  ADDLINE r5
+
+  # Quadratic: 2P for each pair
+  LOAD r7
+  LOAD r8
+  LOAD r4
+  PUSH 2
+  MUL
+  ADDQUAD r5
+
+  LOAD r7
+  LOAD r9
+  LOAD r4
+  PUSH 2
+  MUL
+  ADDQUAD r5
+
+  LOAD r8
+  LOAD r9
+  LOAD r4
+  PUSH 2
+  MUL
+  ADDQUAD r5
+
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r5
+HALT

@@ -7,24 +7,15 @@ from a Problem's recorded action list.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any, TYPE_CHECKING
 
 from xqvm.core import XQMXDomain
 
 from .expression import (
-    BinOp,
-    ColFindExpr,
-    Expr,
-    GetLineExpr,
-    Literal,
-    RegLoad,
+    Expr, Literal, RegLoad, BinOp,
+    ColFindExpr, GetLineExpr,
+    line, fmt_int, coerce, emit_flat_index, resolve_coord, expr_reg,
     Types,
-    coerce,
-    emit_flat_index,
-    expr_reg,
-    fmt_int,
-    line,
-    resolve_coord,
 )
 from .symbols import InputRef, LoopVar, ModelRef, OutputRef
 
@@ -35,9 +26,8 @@ if TYPE_CHECKING:
 # Compiler: encoder
 # ---------------------------------------------------------------------------
 
-
 def compile_encoder(prob: Problem) -> str:
-    """Generate the encoder .xqasm program."""
+    """ Generate the encoder .xqasm program. """
     lines: list[str] = []
     indent = 0
 
@@ -97,9 +87,8 @@ def compile_encoder(prob: Problem) -> str:
 
     return "\n".join(lines) + "\n"
 
-
 def _emit_model_allocation(d: dict[str, Any], lines: list[str], indent: int) -> None:
-    """Emit model size computation, allocation, and optional grid resize."""
+    """ Emit model size computation, allocation, and optional grid resize. """
     size_expr: Expr = d["size_expr"]
     model_reg: int = d["model_reg"]
     domain: XQMXDomain = d["domain"]
@@ -133,16 +122,14 @@ def _emit_model_allocation(d: dict[str, Any], lines: list[str], indent: int) -> 
         lines.append(line(f"LOAD r{cols_reg}", indent))
         lines.append(line(f"RESIZE r{model_reg}", indent))
 
-
 def _input_reg(expr: Expr) -> int | None:
-    """Extract register from an InputRef expression."""
+    """ Extract register from an InputRef expression. """
     if isinstance(expr, InputRef):
         return expr.reg
     return None
 
-
 def _partition_body(body_actions: list[Action]) -> tuple[list[Action], list[Action]]:
-    """Split body actions into objective and constraint sections by top-level block."""
+    """ Split body actions into objective and constraint sections by top-level block. """
     blocks: list[list[Action]] = []
     current_block: list[Action] = []
     depth = 0
@@ -174,9 +161,8 @@ def _partition_body(body_actions: list[Action]) -> tuple[list[Action], list[Acti
 
     return obj_actions, con_actions
 
-
 def _emit_body_actions(actions: list[Action], lines: list[str], indent: int) -> None:
-    """Emit a sequence of body actions (loops, operations) as assembly."""
+    """ Emit a sequence of body actions (loops, operations) as assembly. """
     for action in actions:
         kind = action.kind
         d = action.data
@@ -209,9 +195,39 @@ def _emit_body_actions(actions: list[Action], lines: list[str], indent: int) -> 
             lines.append(line(f"PUSH {fmt_int(d['penalty'])}", indent))
             lines.append(line(f"ONEHOTC r{d['model'].reg}", indent))
 
+        elif kind == "penalty_eq":
+            d["penalty"].emit(lines, indent)
+            d["target"].emit(lines, indent)
+            lines.append(line(
+                f"PENALTYEQ r{d['model'].reg} r{d['indices'].reg} r{d['coefficients'].reg}",
+                indent,
+            ))
+
+        elif kind == "slack":
+            d["start_index"].emit(lines, indent)
+            d["capacity"].emit(lines, indent)
+            lines.append(line(
+                f"SLACK r{d['indices'].reg} r{d['coefficients'].reg}",
+                indent,
+            ))
+
+        elif kind == "atleast":
+            d["penalty"].emit(lines, indent)
+            d["k"].emit(lines, indent)
+            lines.append(line(
+                f"ATLEAST r{d['model'].reg} r{d['variables'].reg}",
+                indent,
+            ))
+
+        elif kind == "reduce":
+            d["var_a"].emit(lines, indent)
+            d["var_b"].emit(lines, indent)
+            d["penalty"].emit(lines, indent)
+            lines.append(line(f"REDUCE r{d['model'].reg}", indent))
+            lines.append(line(f"STOW r{d['result_reg']}", indent))
 
 def _emit_range_start(d: dict[str, Any], lines: list[str], indent: int) -> None:
-    """Emit RANGE preamble: start value and count."""
+    """ Emit RANGE preamble: start value and count. """
     var: LoopVar = d["var"]
     start_expr: Expr = d["start_expr"]
     end_expr: Expr = d["end_expr"]
@@ -228,9 +244,8 @@ def _emit_range_start(d: dict[str, Any], lines: list[str], indent: int) -> None:
     lines.append(line("RANGE", indent))
     lines.append(line(f"LVAL r{var.reg}", indent + 1))
 
-
 def _emit_add_linear(d: dict[str, Any], lines: list[str], indent: int) -> None:
-    """Emit ADDLINE instruction with coordinate and weight."""
+    """ Emit ADDLINE instruction with coordinate and weight. """
     model: ModelRef = d["model"]
 
     if model.is_2d:
@@ -242,9 +257,8 @@ def _emit_add_linear(d: dict[str, Any], lines: list[str], indent: int) -> None:
     d["weight"].emit(lines, indent)
     lines.append(line(f"ADDLINE r{model.reg}", indent))
 
-
 def _emit_add_quadratic(d: dict[str, Any], lines: list[str], indent: int) -> None:
-    """Emit ADDQUAD instruction with two coordinates and weight."""
+    """ Emit ADDQUAD instruction with two coordinates and weight. """
     model: ModelRef = d["model"]
 
     if model.is_2d:
@@ -262,14 +276,12 @@ def _emit_add_quadratic(d: dict[str, Any], lines: list[str], indent: int) -> Non
     d["weight"].emit(lines, indent)
     lines.append(line(f"ADDQUAD r{model.reg}", indent))
 
-
 # ---------------------------------------------------------------------------
 # Compiler: verifier
 # ---------------------------------------------------------------------------
 
-
 def compile_verifier(prob: Problem) -> str:
-    """Generate the verifier .xqasm program."""
+    """ Generate the verifier .xqasm program. """
     lines: list[str] = []
 
     R_MODEL = 0
@@ -285,17 +297,17 @@ def compile_verifier(prob: Problem) -> str:
 
     # --- Inputs ---
     lines.append("# === Inputs ===")
-    lines.append("PUSH 0")
+    lines.append(f"PUSH 0")
     lines.append(f"INPUT r{R_MODEL}")
-    lines.append("PUSH 1")
+    lines.append(f"PUSH 1")
     lines.append(f"INPUT r{R_SAMPLE}")
-    lines.append("PUSH 2")
+    lines.append(f"PUSH 2")
     lines.append(f"INPUT r{R_N}")
 
     # --- Initialize valid flag ---
     lines.append("")
     lines.append("# === Validity checks ===")
-    lines.append("PUSH 1")
+    lines.append(f"PUSH 1")
     lines.append(f"STOW r{R_VALID}")
 
     if has_row:
@@ -322,72 +334,61 @@ def compile_verifier(prob: Problem) -> str:
     # --- Output ---
     lines.append("")
     lines.append("# === Output ===")
-    lines.append("PUSH 0")
+    lines.append(f"PUSH 0")
     lines.append(f"OUTPUT r{R_ENERGY}")
-    lines.append("PUSH 1")
+    lines.append(f"PUSH 1")
     lines.append(f"OUTPUT r{R_VALID}")
     lines.append("HALT")
 
     return "\n".join(lines) + "\n"
 
-
 def _emit_verifier_check_loop(
-    lines: list[str],
-    n_reg: int,
-    loop_reg: int,
-    check_op: str,
-    sample_reg: int,
-    valid_reg: int,
+    lines: list[str], n_reg: int, loop_reg: int,
+    check_op: str, sample_reg: int, valid_reg: int,
 ) -> None:
-    """Emit a ROWSUM or COLSUM check loop for the verifier."""
-    lines.append("PUSH 0")
+    """ Emit a ROWSUM or COLSUM check loop for the verifier. """
+    lines.append(f"PUSH 0")
     lines.append(f"LOAD r{n_reg}")
     lines.append("RANGE")
     lines.append(f"  LVAL r{loop_reg}")
     lines.append(f"  LOAD r{loop_reg}")
     lines.append(f"  {check_op} r{sample_reg}")
-    lines.append("  PUSH 1")
-    lines.append("  EQ")
+    lines.append(f"  PUSH 1")
+    lines.append(f"  EQ")
     lines.append(f"  LOAD r{valid_reg}")
-    lines.append("  AND")
+    lines.append(f"  AND")
     lines.append(f"  STOW r{valid_reg}")
     lines.append("NEXT")
 
-
 def _emit_verifier_binary_check(
-    lines: list[str],
-    n_reg: int,
-    loop_reg: int,
-    sample_reg: int,
-    valid_reg: int,
+    lines: list[str], n_reg: int, loop_reg: int,
+    sample_reg: int, valid_reg: int,
 ) -> None:
-    """Emit a binary domain check loop: each variable must be 0 or 1."""
-    lines.append("PUSH 0")
+    """ Emit a binary domain check loop: each variable must be 0 or 1. """
+    lines.append(f"PUSH 0")
     lines.append(f"LOAD r{n_reg}")
     lines.append("RANGE")
     lines.append(f"  LVAL r{loop_reg}")
     lines.append(f"  LOAD r{loop_reg}")
     lines.append(f"  GETLINE r{sample_reg}")
-    lines.append("  COPY")
-    lines.append("  PUSH 0")
-    lines.append("  EQ")
-    lines.append("  SWAP")
-    lines.append("  PUSH 1")
-    lines.append("  EQ")
-    lines.append("  OR")
+    lines.append(f"  COPY")
+    lines.append(f"  PUSH 0")
+    lines.append(f"  EQ")
+    lines.append(f"  SWAP")
+    lines.append(f"  PUSH 1")
+    lines.append(f"  EQ")
+    lines.append(f"  OR")
     lines.append(f"  LOAD r{valid_reg}")
-    lines.append("  AND")
+    lines.append(f"  AND")
     lines.append(f"  STOW r{valid_reg}")
     lines.append("NEXT")
-
 
 # ---------------------------------------------------------------------------
 # Compiler: decoder
 # ---------------------------------------------------------------------------
 
-
 def compile_decoder(prob: Problem) -> str:
-    """Generate the decoder .xqasm program."""
+    """ Generate the decoder .xqasm program. """
     lines: list[str] = []
 
     R_SAMPLE = 0
@@ -397,9 +398,9 @@ def compile_decoder(prob: Problem) -> str:
 
     # --- Inputs ---
     lines.append("# === Inputs ===")
-    lines.append("PUSH 0")
+    lines.append(f"PUSH 0")
     lines.append(f"INPUT r{R_SAMPLE}")
-    lines.append("PUSH 1")
+    lines.append(f"PUSH 1")
     lines.append(f"INPUT r{R_N}")
 
     # --- Collect output blocks ---
@@ -423,9 +424,8 @@ def compile_decoder(prob: Problem) -> str:
     lines.append("HALT")
     return "\n".join(lines) + "\n"
 
-
 def _collect_output_blocks(actions: list[Action]) -> list[tuple[OutputRef, list[Action]]]:
-    """Group actions into (output_ref, computation_block) pairs."""
+    """ Group actions into (output_ref, computation_block) pairs. """
     blocks: list[tuple[OutputRef, list[Action]]] = []
     current_output: OutputRef | None = None
     current_block: list[Action] = []
@@ -446,17 +446,11 @@ def _collect_output_blocks(actions: list[Action]) -> list[tuple[OutputRef, list[
 
     return blocks
 
-
 def _emit_decoder_block(
-    actions: list[Action],
-    lines: list[str],
-    indent: int,
-    sample_reg: int,
-    n_reg: int,
-    loop_reg: int,
-    out_reg: int,
+    actions: list[Action], lines: list[str], indent: int,
+    sample_reg: int, n_reg: int, loop_reg: int, out_reg: int,
 ) -> None:
-    """Emit decoder computation block actions."""
+    """ Emit decoder computation block actions. """
     for action in actions:
         kind = action.kind
         d = action.data
@@ -486,9 +480,8 @@ def _emit_decoder_block(
             _emit_decoder_value_expr(d["value_expr"], lines, indent, sample_reg, loop_reg)
             lines.append(line(f"VECPUSH r{out_reg}", indent))
 
-
 def _emit_decoder_expr(expr: Expr, lines: list[str], indent: int, n_reg: int) -> None:
-    """Emit an expression in decoder context, remapping InputRef to N register."""
+    """ Emit an expression in decoder context, remapping InputRef to N register. """
     if isinstance(expr, Literal):
         expr.emit(lines, indent)
     elif isinstance(expr, (InputRef, RegLoad)):
@@ -500,15 +493,11 @@ def _emit_decoder_expr(expr: Expr, lines: list[str], indent: int, n_reg: int) ->
     else:
         expr.emit(lines, indent)
 
-
 def _emit_decoder_value_expr(
-    expr: Expr,
-    lines: list[str],
-    indent: int,
-    sample_reg: int,
-    loop_reg: int,
+    expr: Expr, lines: list[str], indent: int,
+    sample_reg: int, loop_reg: int,
 ) -> None:
-    """Emit a value expression in decoder context (inside loop)."""
+    """ Emit a value expression in decoder context (inside loop). """
     if isinstance(expr, ColFindExpr):
         col = expr.col_expr
         if isinstance(col, (LoopVar, RegLoad)):

@@ -1,0 +1,53 @@
+# Graph Coloring Decoder
+#
+# Input:
+#   0: BSMX sample
+#   1: N (vertex count)
+#   2: K (color count)
+#
+# Output:
+#   0: coloring (vec<int>, vertex i -> color index)
+
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+
+VECI r3
+
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10            # vertex i
+
+  PUSH -1
+  STOW r4             # color = -1
+
+  PUSH 0
+  LOAD r2
+  RANGE
+    LVAL r11           # c
+    LOAD r10
+    LOAD r2
+    MUL
+    LOAD r11
+    ADD
+    GETLINE r0         # x[i,c]
+    PUSH 1
+    EQ
+    NOT
+    JUMPI .0
+    LOAD r11
+    STOW r4
+    TARGET .0
+  NEXT
+
+  LOAD r4
+  VECPUSH r3
+NEXT
+
+PUSH 0
+OUTPUT r3
+HALT

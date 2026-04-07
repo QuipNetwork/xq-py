@@ -1,0 +1,112 @@
+# Vertex Cover Encoder
+#
+# Transforms an edge list into a BQMX model for the
+# Minimum Vertex Cover problem.
+#
+# QUBO formulation:
+#   Objective: minimize number of selected vertices
+#     linear[i] += A for each vertex i
+#
+#   Constraint: for each edge (i,j), at least one must be selected
+#     Penalty B * (1 - x_i)(1 - x_j) expands to:
+#       linear[i] -= B
+#       linear[j] -= B
+#       quadratic[i,j] += B
+#
+#   B must be > A for constraints to dominate objective.
+#
+# Input:
+#   0: N (int, vertex count)
+#   1: edges (vec<int>, flat pairs [i, j, i, j, ...])
+#   2: A (int, vertex cost weight)
+#   3: B (int, edge constraint penalty)
+#
+# Output:
+#   0: BQMX model (N variables)
+#
+# Registers:
+#   r0  = N
+#   r1  = edges vec
+#   r2  = A (vertex cost)
+#   r3  = B (edge penalty)
+#   r4  = BQMX model
+#   r5  = edge count
+#   r10 = loop var
+#   r11 = i (edge source)
+#   r12 = j (edge target)
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # r0 = N
+PUSH 1
+INPUT r1              # r1 = edges vec
+PUSH 2
+INPUT r2              # r2 = A
+PUSH 3
+INPUT r3              # r3 = B
+
+# === Compute edge count ===
+VECLEN r1
+PUSH 2
+DIV
+STOW r5               # r5 = edge_count
+
+# === Allocate model ===
+LOAD r0
+BQMX r4               # r4 = BQMX(N)
+
+# === Objective: linear[i] += A for each vertex ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10            # i
+  LOAD r10            # variable index
+  LOAD r2             # A
+  ADDLINE r4          # linear[i] += A
+NEXT
+
+# === Edge constraints: for each edge (i,j) ===
+# linear[i] -= B, linear[j] -= B, quadratic[i,j] += B
+PUSH 0
+LOAD r5
+RANGE
+  LVAL r10            # e (edge index)
+
+  # offset = e * 2
+  LOAD r10
+  PUSH 2
+  MUL
+
+  # i = edges[offset]
+  COPY
+  VECGET r1
+  STOW r11            # r11 = i
+
+  # j = edges[offset + 1]
+  INC
+  VECGET r1
+  STOW r12            # r12 = j
+
+  # linear[i] -= B
+  LOAD r11
+  LOAD r3
+  NEG
+  ADDLINE r4
+
+  # linear[j] -= B
+  LOAD r12
+  LOAD r3
+  NEG
+  ADDLINE r4
+
+  # quadratic[i,j] += B
+  LOAD r11
+  LOAD r12
+  LOAD r3
+  ADDQUAD r4
+NEXT
+
+# === Output model ===
+PUSH 0
+OUTPUT r4
+HALT

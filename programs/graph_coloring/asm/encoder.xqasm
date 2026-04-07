@@ -1,0 +1,128 @@
+# Graph Coloring Encoder
+#
+# Variables: N*K binary grid. x[i,c] = 1 means vertex i gets color c.
+# Flat index: x[i,c] = i*K + c
+#
+# Constraints:
+#   1. ONEHOTR: each vertex gets exactly one color
+#   2. EXCLUDE: for each edge (i,j) and each color c,
+#      x[i,c] and x[j,c] cannot both be 1
+#   3. SYMBREAK: fix vertex 0 to color 0
+#      (eliminates K! equivalent colorings from color permutation)
+#
+# Input:
+#   0: N (int, vertex count)
+#   1: K (int, number of colors)
+#   2: E (int, edge count)
+#   3: edges (vec<int>, flat: [i, j, i, j, ...])
+#   4: P_oh (int, one-hot penalty)
+#   5: P_ex (int, exclusion penalty)
+#   6: P_sym (int, symmetry breaking penalty)
+#
+# Output:
+#   0: BQMX model (N*K variables)
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # N
+PUSH 1
+INPUT r1              # K
+PUSH 2
+INPUT r2              # E
+PUSH 3
+INPUT r3              # edges
+PUSH 4
+INPUT r4              # P_oh
+PUSH 5
+INPUT r5              # P_ex
+PUSH 6
+INPUT r6              # P_sym
+
+# === Allocate model: N*K vars, grid N x K ===
+LOAD r0               # rows = N
+LOAD r1               # cols = K
+LOAD r0
+LOAD r1
+MUL                   # total = N*K
+BQMX r7
+RESIZE r7
+
+# === Constraint 1: ONEHOTR for each vertex ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10            # row
+  LOAD r4             # P_oh
+  ONEHOTR r7
+NEXT
+
+# === Constraint 2: EXCLUDE per edge per color ===
+# For each edge (i,j), for each color c:
+#   EXCLUDE(i*K+c, j*K+c)
+PUSH 0
+LOAD r2
+RANGE
+  LVAL r10            # edge index
+
+  LOAD r10
+  PUSH 2
+  MUL
+  STOW r8             # offset
+
+  LOAD r8
+  VECGET r3
+  STOW r11            # vertex i
+
+  LOAD r8
+  INC
+  VECGET r3
+  STOW r12            # vertex j
+
+  # For each color c
+  PUSH 0
+  LOAD r1
+  RANGE
+    LVAL r13           # c
+
+    # x[i,c] = i*K + c
+    LOAD r11
+    LOAD r1
+    MUL
+    LOAD r13
+    ADD                # i*K + c
+
+    # x[j,c] = j*K + c
+    LOAD r12
+    LOAD r1
+    MUL
+    LOAD r13
+    ADD                # j*K + c
+
+    LOAD r5            # P_ex
+    EXCLUDE r7
+  NEXT
+NEXT
+
+# === Constraint 3: SYMBREAK — fix vertex 0 to color 0 ===
+# Strong negative bias on x[0,0] to force it to 1
+PUSH 0                # index 0*K + 0 = 0
+LOAD r6
+NEG                   # -P_sym
+ADDLINE r7
+
+# Penalty on x[0,c] for c > 0 to force them to 0
+PUSH 1
+LOAD r1
+DEC                   # count = K-1
+RANGE
+  LVAL r10            # c (1 to K-1)
+  LOAD r10            # index 0*K + c = c
+  LOAD r6             # +P_sym (penalty for being 1)
+  ADDLINE r7
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r7
+HALT

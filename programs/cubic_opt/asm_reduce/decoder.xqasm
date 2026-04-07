@@ -1,0 +1,27 @@
+# Cubic Optimization Decoder
+#
+# Input:
+#   0: BSMX sample
+#   1: N (original variable count)
+#
+# Output:
+#   0: assignment (vec<int>)
+
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+
+VECI r2
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10
+  LOAD r10
+  GETLINE r0
+  VECPUSH r2
+NEXT
+
+PUSH 0
+OUTPUT r2
+HALT

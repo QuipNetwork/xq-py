@@ -1,0 +1,188 @@
+# Max-3-SAT Verifier
+#
+# Input:
+#   0: BQMX model
+#   1: BSMX sample
+#   2: N (variable count)
+#   3: M (clause count)
+#   4: clauses vec (flat [var, neg, var, neg, var, neg, ...])
+#
+# Output:
+#   0: energy
+#   1: valid flag (1 = all binary)
+#   2: satisfied count
+
+# === Load inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+PUSH 3
+INPUT r3
+PUSH 4
+INPUT r4
+
+# === Total vars ===
+LOAD r2
+LOAD r3
+ADD
+STOW r7
+
+# === Initialize ===
+PUSH 1
+STOW r5               # valid = 1
+PUSH 0
+STOW r6               # satisfied = 0
+
+# === Check all variables are binary ===
+PUSH 0
+LOAD r7
+RANGE
+  LVAL r10
+  LOAD r10
+  GETLINE r1
+  COPY
+  PUSH 0
+  EQ
+  SWAP
+  PUSH 1
+  EQ
+  OR
+  LOAD r5
+  AND
+  STOW r5
+NEXT
+
+# === Count satisfied clauses ===
+PUSH 0
+LOAD r3
+RANGE
+  LVAL r10
+
+  # offset = c * 6
+  LOAD r10
+  PUSH 6
+  MUL
+  STOW r11
+
+  # Read literal 0
+  LOAD r11
+  VECGET r4
+  STOW r12            # var
+  LOAD r11
+  INC
+  VECGET r4
+  STOW r15            # neg
+
+  # Read literal 1
+  LOAD r11
+  PUSH 2
+  ADD
+  VECGET r4
+  STOW r13
+  LOAD r11
+  PUSH 3
+  ADD
+  VECGET r4
+  STOW r16
+
+  # Read literal 2
+  LOAD r11
+  PUSH 4
+  ADD
+  VECGET r4
+  STOW r14
+  LOAD r11
+  PUSH 5
+  ADD
+  VECGET r4
+  STOW r17
+
+  # Compute literal values
+  # neg=0 (positive): literal = sample[var]
+  # neg=1 (negated):  literal = 1 - sample[var]
+  #
+  # Logic: check if neg==1 (negated)
+  #   If negated: compute 1 - sample[var]
+  #   If positive: use sample[var] directly
+
+  # Literal 0
+  LOAD r12
+  GETLINE r1          # stack: [sample[var]]
+  LOAD r15
+  PUSH 1
+  EQ                  # stack: [sample[var], neg==1?]
+  NOT                 # stack: [sample[var], neg!=1?] (positive?)
+  JUMPI .0            # if positive (neg==0), jump to .0 -> use sample directly
+  # Fall through: negated (neg==1) -> compute 1 - sample[var]
+  PUSH 1
+  SWAP
+  SUB
+  STOW r18
+  JUMP .1
+  TARGET .0
+  # Positive (neg==0) -> literal = sample[var]
+  STOW r18
+  TARGET .1
+
+  # Literal 1
+  LOAD r13
+  GETLINE r1
+  LOAD r16
+  PUSH 1
+  EQ
+  NOT
+  JUMPI .2
+  PUSH 1
+  SWAP
+  SUB
+  STOW r19
+  JUMP .3
+  TARGET .2
+  STOW r19
+  TARGET .3
+
+  # Literal 2
+  LOAD r14
+  GETLINE r1
+  LOAD r17
+  PUSH 1
+  EQ
+  NOT
+  JUMPI .4
+  PUSH 1
+  SWAP
+  SUB
+  STOW r20
+  JUMP .5
+  TARGET .4
+  STOW r20
+  TARGET .5
+
+  # Clause satisfied if l0 + l1 + l2 >= 1
+  LOAD r18
+  LOAD r19
+  ADD
+  LOAD r20
+  ADD
+  PUSH 1
+  GTE
+  LOAD r6
+  ADD
+  STOW r6
+NEXT
+
+# === Compute energy ===
+ENERGY r0 r1
+STOW r8
+
+# === Output ===
+PUSH 0
+OUTPUT r8
+PUSH 1
+OUTPUT r5
+PUSH 2
+OUTPUT r6
+HALT

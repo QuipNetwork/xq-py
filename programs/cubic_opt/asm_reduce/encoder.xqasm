@@ -1,0 +1,80 @@
+# Cubic Optimization Encoder (using REDUCE)
+#
+# Same formulation but REDUCE handles auxiliary variable
+# allocation and constraint generation.
+#
+# Input:
+#   0: N (int, variable count)
+#   1: T (int, number of cubic terms)
+#   2: terms (vec<int>, flat: [i, j, k, coeff, ...])
+#   3: P_aux (int, auxiliary constraint penalty)
+#
+# Output:
+#   0: BQMX model
+
+# === Read inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+PUSH 3
+INPUT r3
+
+# === Allocate model with N vars (REDUCE extends as needed) ===
+LOAD r0
+BQMX r4
+
+# === For each cubic term ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10
+
+  # Read term: i, j, k, coeff
+  LOAD r10
+  PUSH 4
+  MUL
+  STOW r11            # offset
+
+  LOAD r11
+  VECGET r2
+  STOW r12            # i
+
+  LOAD r11
+  INC
+  VECGET r2
+  STOW r13            # j
+
+  LOAD r11
+  PUSH 2
+  ADD
+  VECGET r2
+  STOW r14            # k
+
+  LOAD r11
+  PUSH 3
+  ADD
+  VECGET r2
+  STOW r15            # coeff
+
+  # REDUCE: x_i * x_j -> w (pushes w_idx onto stack)
+  LOAD r12            # var_a = i
+  LOAD r13            # var_b = j
+  LOAD r3             # P_aux
+  REDUCE r4           # stack: [w_idx]
+  STOW r16            # r16 = w_idx
+
+  # Reduced cubic: coeff * w * x_k
+  LOAD r16
+  LOAD r14
+  LOAD r15
+  ADDQUAD r4
+
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r4
+HALT

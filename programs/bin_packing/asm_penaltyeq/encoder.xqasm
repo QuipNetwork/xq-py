@@ -1,0 +1,115 @@
+# Bin Packing Encoder (using PENALTYEQ + SLACK)
+#
+# Same formulation, but capacity constraints use PENALTYEQ + SLACK
+# instead of manual expansion.
+#
+# Input:
+#   0: N (int, item count)
+#   1: B (int, bin count)
+#   2: weights (vec<int>, item weights)
+#   3: C (int, bin capacity)
+#   4: P_oh (int, one-hot penalty)
+#   5: P_cap (int, capacity penalty)
+#
+# Output:
+#   0: BQMX model
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # N
+PUSH 1
+INPUT r1              # B
+PUSH 2
+INPUT r2              # weights
+PUSH 3
+INPUT r3              # C
+PUSH 4
+INPUT r4              # P_oh
+PUSH 5
+INPUT r5              # P_cap
+
+# === Compute slack count per bin ===
+LOAD r3
+BITLEN
+STOW r6               # slacks_per_bin
+
+# === Total vars = N*B + B*slacks_per_bin ===
+LOAD r0
+LOAD r1
+MUL
+STOW r7               # N*B
+
+LOAD r1
+LOAD r6
+MUL
+STOW r8               # B*slacks_per_bin
+
+LOAD r7
+LOAD r8
+ADD
+STOW r9               # total_vars
+
+# === Allocate model ===
+LOAD r0               # N (rows)
+LOAD r1               # B (cols)
+LOAD r9               # total_vars
+BQMX r11
+RESIZE r11
+
+# === Constraint 1: ONEHOTR for each item ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10            # row index
+  LOAD r4             # P_oh (penalty)
+  ONEHOTR r11
+NEXT
+
+# === Constraint 2: capacity per bin using PENALTYEQ + SLACK ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r12            # b
+
+  # Build indices and coefficients for this bin
+  VECI r13             # indices
+  VECI r14             # coefficients
+
+  # Add item variables: x[i,b] = i*B + b, coeff = w_i
+  PUSH 0
+  LOAD r0
+  RANGE
+    LVAL r10
+    LOAD r10
+    LOAD r1
+    MUL
+    LOAD r12
+    ADD                # i*B + b
+    VECPUSH r13
+
+    LOAD r10
+    VECGET r2          # w_i
+    VECPUSH r14
+  NEXT
+
+  # Add slack variables using SLACK opcode
+  LOAD r7             # N*B
+  LOAD r12
+  LOAD r6
+  MUL
+  ADD                 # slack_start = N*B + b*slacks_per_bin
+  LOAD r3             # C (capacity)
+  SLACK r13 r14       # appends slack indices and coefficients
+
+  # PENALTYEQ: P_cap * (sum(coeffs * vars) - C)^2
+  LOAD r5             # P_cap
+  LOAD r3             # C (target)
+  PENALTYEQ r11 r13 r14
+
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r11
+HALT

@@ -1,0 +1,133 @@
+# Graph Coloring Verifier
+#
+# Input:
+#   0: BQMX model
+#   1: BSMX sample
+#   2: N (vertex count)
+#   3: K (color count)
+#   4: E (edge count)
+#   5: edges (vec<int>)
+#
+# Output:
+#   0: energy
+#   1: valid (all binary + one-hot + no adjacent same color)
+#   2: conflicts (number of edges with same color endpoints)
+
+# === Load inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+PUSH 3
+INPUT r3
+PUSH 4
+INPUT r4
+PUSH 5
+INPUT r5
+
+# === Check one-hot per vertex ===
+PUSH 1
+STOW r6               # valid = 1
+
+PUSH 0
+LOAD r2
+RANGE
+  LVAL r10
+  PUSH 0
+  STOW r7             # row_sum = 0
+
+  PUSH 0
+  LOAD r3
+  RANGE
+    LVAL r11
+    LOAD r10
+    LOAD r3
+    MUL
+    LOAD r11
+    ADD                # i*K + c
+    GETLINE r1
+    LOAD r7
+    ADD
+    STOW r7
+  NEXT
+
+  LOAD r7
+  PUSH 1
+  EQ
+  LOAD r6
+  AND
+  STOW r6
+NEXT
+
+# === Check adjacency conflicts ===
+PUSH 0
+STOW r8               # conflicts = 0
+
+PUSH 0
+LOAD r4
+RANGE
+  LVAL r10
+
+  LOAD r10
+  PUSH 2
+  MUL
+  STOW r9
+
+  LOAD r9
+  VECGET r5
+  STOW r11            # vertex i
+
+  LOAD r9
+  INC
+  VECGET r5
+  STOW r12            # vertex j
+
+  # Check each color
+  PUSH 0
+  LOAD r3
+  RANGE
+    LVAL r13           # c
+
+    LOAD r11
+    LOAD r3
+    MUL
+    LOAD r13
+    ADD
+    GETLINE r1         # x[i,c]
+
+    LOAD r12
+    LOAD r3
+    MUL
+    LOAD r13
+    ADD
+    GETLINE r1         # x[j,c]
+
+    MUL                # 1 if both have color c
+    LOAD r8
+    ADD
+    STOW r8
+  NEXT
+NEXT
+
+# Conflicts > 0 means invalid
+LOAD r8
+PUSH 0
+EQ
+LOAD r6
+AND
+STOW r6
+
+# === Energy ===
+ENERGY r0 r1
+STOW r14
+
+# === Output ===
+PUSH 0
+OUTPUT r14
+PUSH 1
+OUTPUT r6
+PUSH 2
+OUTPUT r8
+HALT

@@ -1,0 +1,91 @@
+# Quartic Optimization Encoder (using REDUCE)
+#
+# Each quartic term uses two chained REDUCE calls:
+#   w1 = REDUCE(x_i, x_j)
+#   w2 = REDUCE(w1, x_k)
+#   Then: coeff * w2 * x_l
+#
+# Input:
+#   0: N (int, variable count)
+#   1: T (int, number of quartic terms)
+#   2: terms (vec<int>, flat: [i, j, k, l, coeff, ...])
+#   3: P_aux (int, auxiliary constraint penalty)
+#
+# Output:
+#   0: BQMX model
+
+# === Read inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+PUSH 3
+INPUT r3
+
+# === Allocate model (REDUCE extends as needed) ===
+LOAD r0
+BQMX r4
+
+# === For each quartic term ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10
+
+  # Read term
+  LOAD r10
+  PUSH 5
+  MUL
+  STOW r11            # offset
+
+  LOAD r11
+  VECGET r2
+  STOW r12            # i
+  LOAD r11
+  INC
+  VECGET r2
+  STOW r13            # j
+  LOAD r11
+  PUSH 2
+  ADD
+  VECGET r2
+  STOW r14            # k
+  LOAD r11
+  PUSH 3
+  ADD
+  VECGET r2
+  STOW r15            # l
+  LOAD r11
+  PUSH 4
+  ADD
+  VECGET r2
+  STOW r16            # coeff
+
+  # First REDUCE: w1 = x_i * x_j
+  LOAD r12
+  LOAD r13
+  LOAD r3
+  REDUCE r4
+  STOW r17            # w1
+
+  # Second REDUCE: w2 = w1 * x_k
+  LOAD r17
+  LOAD r14
+  LOAD r3
+  REDUCE r4
+  STOW r18            # w2
+
+  # Reduced quartic: coeff * w2 * x_l
+  LOAD r18
+  LOAD r15
+  LOAD r16
+  ADDQUAD r4
+
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r4
+HALT

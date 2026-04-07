@@ -1,0 +1,128 @@
+# Vertex Cover Verifier
+#
+# Validates a Vertex Cover solution:
+#   1. All variables are binary (0 or 1)
+#   2. Every edge has at least one endpoint selected
+#   3. Computes energy
+#
+# Input:
+#   0: BQMX model (from encoder)
+#   1: BSMX sample (solution to verify)
+#   2: N (int, vertex count)
+#   3: edges (vec<int>, flat pairs [i, j, i, j, ...])
+#
+# Output:
+#   0: energy (int)
+#   1: valid flag (1 = valid, 0 = invalid)
+#   2: cover_size (int, number of selected vertices)
+#
+# Registers:
+#   r0  = model
+#   r1  = sample
+#   r2  = valid flag
+#   r3  = N
+#   r4  = edges vec
+#   r5  = edge count
+#   r6  = energy
+#   r7  = cover_size
+#   r10 = loop var
+#   r11 = i (edge source)
+#   r12 = j (edge target)
+#   r13 = sample value temp
+
+# === Load inputs ===
+PUSH 0
+INPUT r0              # r0 = model
+PUSH 1
+INPUT r1              # r1 = sample
+PUSH 2
+INPUT r3              # r3 = N
+PUSH 3
+INPUT r4              # r4 = edges
+
+# === Compute edge count ===
+VECLEN r4
+PUSH 2
+DIV
+STOW r5               # r5 = edge_count
+
+# === Initialize ===
+PUSH 1
+STOW r2               # valid = 1
+PUSH 0
+STOW r7               # cover_size = 0
+
+# === Check binary + count cover size ===
+PUSH 0
+LOAD r3
+RANGE
+  LVAL r10            # i
+  LOAD r10
+  GETLINE r1          # sample[i]
+  STOW r13            # r13 = sample[i]
+
+  # Check binary
+  LOAD r13
+  PUSH 0
+  EQ
+  LOAD r13
+  PUSH 1
+  EQ
+  OR
+  LOAD r2
+  AND
+  STOW r2             # valid &= (is 0 or 1)
+
+  # Count selected
+  LOAD r13
+  LOAD r7
+  ADD
+  STOW r7             # cover_size += sample[i]
+NEXT
+
+# === Check edge coverage: for each edge, at least one endpoint selected ===
+PUSH 0
+LOAD r5
+RANGE
+  LVAL r10            # e
+
+  # offset = e * 2
+  LOAD r10
+  PUSH 2
+  MUL
+
+  # i = edges[offset]
+  COPY
+  VECGET r4
+  STOW r11            # r11 = i
+
+  # j = edges[offset + 1]
+  INC
+  VECGET r4
+  STOW r12            # r12 = j
+
+  # Check: sample[i] + sample[j] >= 1
+  LOAD r11
+  GETLINE r1          # sample[i]
+  LOAD r12
+  GETLINE r1          # sample[j]
+  ADD                 # sample[i] + sample[j]
+  PUSH 1
+  GTE                 # >= 1?
+  LOAD r2
+  AND
+  STOW r2             # valid &= edge covered
+NEXT
+
+# === Compute energy ===
+ENERGY r0 r1
+STOW r6
+
+# === Output ===
+PUSH 0
+OUTPUT r6              # output[0] = energy
+PUSH 1
+OUTPUT r2              # output[1] = valid flag
+PUSH 2
+OUTPUT r7              # output[2] = cover_size
+HALT

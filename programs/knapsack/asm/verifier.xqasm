@@ -1,0 +1,103 @@
+# 0-1 Knapsack Verifier
+#
+# Validates a Knapsack solution sample:
+#   1. All item variables are binary (0 or 1)
+#   2. Total weight of selected items does not exceed capacity W
+#   3. Computes energy
+#
+# Input:
+#   0: BQMX model (from encoder)
+#   1: BSMX sample (solution to verify)
+#   2: N (int, item count)
+#   3: weights (vec<int>)
+#   4: W (int, capacity)
+#
+# Output:
+#   0: energy (int)
+#   1: valid flag (1 = valid, 0 = invalid)
+#   2: total_weight (int, weight of selected items)
+#
+# Registers:
+#   r0  = model
+#   r1  = sample
+#   r2  = valid flag
+#   r3  = N
+#   r4  = weights vec
+#   r5  = W (capacity)
+#   r6  = energy
+#   r7  = total_weight
+#   r10 = loop var
+#   r11 = current sample value
+
+# === Load inputs ===
+PUSH 0
+INPUT r0              # r0 = model
+PUSH 1
+INPUT r1              # r1 = sample
+PUSH 2
+INPUT r3              # r3 = N
+PUSH 3
+INPUT r4              # r4 = weights
+PUSH 4
+INPUT r5              # r5 = W
+
+# === Initialize ===
+PUSH 1
+STOW r2               # valid = 1
+PUSH 0
+STOW r7               # total_weight = 0
+
+# === Check item variables are binary + compute total weight ===
+PUSH 0
+LOAD r3
+RANGE
+  LVAL r10            # i
+
+  # Read sample[i] and store it
+  LOAD r10
+  GETLINE r1          # push sample[i]
+  STOW r11            # r11 = sample[i]
+
+  # Check binary: sample[i] == 0 OR sample[i] == 1
+  LOAD r11
+  PUSH 0
+  EQ                  # == 0?
+  LOAD r11
+  PUSH 1
+  EQ                  # == 1?
+  OR                  # is 0 or 1?
+  LOAD r2
+  AND
+  STOW r2             # valid &= check
+
+  # Accumulate weight: total_weight += sample[i] * weights[i]
+  LOAD r11            # sample[i]
+  LOAD r10
+  VECGET r4           # weights[i]
+  MUL                 # sample[i] * weights[i]
+  LOAD r7
+  ADD
+  STOW r7             # total_weight += result
+NEXT
+
+# === Check capacity: total_weight <= W ===
+LOAD r7
+LOAD r5
+GT                    # total_weight > W?
+NOT                   # total_weight <= W?
+LOAD r2
+AND
+STOW r2               # valid &= (total_weight <= W)
+
+# === Compute energy ===
+ENERGY r0 r1
+STOW r6
+
+# === Output ===
+PUSH 0
+OUTPUT r6              # output[0] = energy
+PUSH 1
+OUTPUT r2              # output[1] = valid flag
+PUSH 2
+OUTPUT r7              # output[2] = total_weight
+HALT

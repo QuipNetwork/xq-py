@@ -1,0 +1,229 @@
+# 0-1 Knapsack Encoder
+#
+# Transforms item values, weights, and capacity into a BQMX model
+# for the 0-1 Knapsack problem.
+#
+# QUBO formulation:
+#   Variables: N item variables (x_i = 1 if item i selected)
+#              + S slack variables (binary-encoded unused capacity)
+#   Total variables: N + S, where S = floor(log2(W)) + 1
+#
+#   Objective: maximize value → linear[i] -= value[i] for each item
+#
+#   Capacity constraint: sum(w_i * x_i) + sum(2^j * s_j) = W
+#   Penalize violation: P * (sum(w_i * x_i) + sum(2^j * s_j) - W)^2
+#
+#   Expansion of P * (sum(a_k * y_k) - W)^2:
+#     linear[k]   += P * a_k * (a_k - 2*W)
+#     quad[k,m]   += P * 2 * a_k * a_m    (for all k < m)
+#
+#   Where y_k are all variables (items + slacks), a_k are their
+#   coefficients (weights for items, powers of 2 for slacks).
+#
+# Input:
+#   0: N (int, item count)
+#   1: values (vec<int>, value of each item)
+#   2: weights (vec<int>, weight of each item)
+#   3: W (int, knapsack capacity)
+#   4: P (int, constraint penalty weight)
+#
+# Output:
+#   0: BQMX model
+#
+# Registers:
+#   r0  = N (item count)
+#   r1  = values vec
+#   r2  = weights vec
+#   r3  = W (capacity)
+#   r4  = BQMX model
+#   r5  = P (penalty)
+#   r6  = S (number of slack variables)
+#   r7  = total_vars (N + S)
+#   r8  = all_coeffs vec (weights for items, powers of 2 for slacks)
+#   r10 = loop var k
+#   r11 = loop var m
+#   r12 = a_k (coefficient for variable k)
+#   r13 = a_m (coefficient for variable m)
+#   r14 = temp computation
+#   r15 = 2*W
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # r0 = N
+PUSH 1
+INPUT r1              # r1 = values
+PUSH 2
+INPUT r2              # r2 = weights
+PUSH 3
+INPUT r3              # r3 = W (capacity)
+PUSH 4
+INPUT r5              # r5 = P (penalty)
+
+# === Compute number of slack variables S = floor(log2(W)) + 1 ===
+# Divide W by 2 repeatedly until 0, count iterations
+LOAD r3
+STOW r14              # temp = W
+PUSH 0
+STOW r6               # S = 0
+TARGET .0
+  LOAD r14
+  PUSH 0
+  GT                  # temp > 0?
+  NOT
+  JUMPI .1            # if not, exit loop
+  LOAD r14
+  PUSH 2
+  DIV
+  STOW r14            # temp = temp / 2
+  LOAD r6
+  INC
+  STOW r6             # S++
+  JUMP .0
+TARGET .1
+
+# === Compute total_vars = N + S ===
+LOAD r0
+LOAD r6
+ADD
+STOW r7               # r7 = N + S
+
+# === Allocate model ===
+LOAD r7
+BQMX r4               # r4 = BQMX(N + S)
+
+# === Build combined coefficients vec ===
+# Items: a_k = weights[k] for k in [0, N)
+# Slacks: a_k = 2^(k-N) for k in [N, N+S)
+VECI r8
+
+# Append item weights
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10
+  VECGET r2           # weights[k]
+  VECPUSH r8
+NEXT
+
+# Append slack coefficients (powers of 2)
+PUSH 1
+STOW r14              # power = 1
+PUSH 0
+LOAD r6
+RANGE
+  LOAD r14
+  VECPUSH r8          # append current power of 2
+  LOAD r14
+  PUSH 2
+  MUL
+  STOW r14            # power *= 2
+NEXT
+
+# === Objective: linear[i] -= value[i] for each item ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10            # i
+  LOAD r10            # variable index
+  LOAD r10
+  VECGET r1           # values[i]
+  NEG                 # -value[i]
+  ADDLINE r4
+NEXT
+
+# === Precompute 2*W ===
+PUSH 2
+LOAD r3
+MUL
+STOW r15              # r15 = 2*W
+
+# === Capacity constraint: linear terms ===
+# For each k in [0, total_vars):
+#   linear[k] += P * a_k * (a_k - 2*W)
+PUSH 0
+LOAD r7
+RANGE
+  LVAL r10            # k
+  LOAD r10
+  VECGET r8           # a_k
+  STOW r12            # r12 = a_k
+
+  # a_k - 2*W
+  LOAD r12
+  LOAD r15
+  SUB                 # a_k - 2*W
+
+  # P * a_k * (a_k - 2*W)
+  LOAD r12
+  MUL                 # a_k * (a_k - 2*W)
+  LOAD r5
+  MUL                 # P * a_k * (a_k - 2*W)
+
+  # ADDLINE: pops value, index
+  LOAD r10            # variable index k
+  SWAP
+  ADDLINE r4
+NEXT
+
+# === Capacity constraint: quadratic terms ===
+# For each k in [0, total_vars):
+#   for each m in [k+1, total_vars):
+#     quadratic[k,m] += P * 2 * a_k * a_m
+PUSH 0
+LOAD r7
+DEC                   # total_vars - 1
+RANGE
+  LVAL r10            # k
+  LOAD r10
+  VECGET r8
+  STOW r12            # r12 = a_k
+
+  LOAD r10
+  INC                 # start = k + 1
+  LOAD r7
+  LOAD r10
+  SUB
+  DEC                 # count = total_vars - k - 1
+  RANGE
+    LVAL r11          # m
+    LOAD r11
+    VECGET r8
+    STOW r13          # r13 = a_m
+
+    # P * 2 * a_k * a_m
+    LOAD r5           # P
+    PUSH 2
+    MUL               # P * 2
+    LOAD r12          # a_k
+    MUL               # P * 2 * a_k
+    LOAD r13          # a_m
+    MUL               # P * 2 * a_k * a_m
+
+    # ADDQUAD: pops value, j, i
+    LOAD r10          # i = k
+    LOAD r11          # j = m
+    SWAP
+    # Stack is now: ..., P*2*a_k*a_m, m, k
+    # But ADDQUAD pops value, j, i — need i, j, value on stack
+    # Let me redo this properly
+    POP
+    POP
+    POP
+    LOAD r10          # i
+    LOAD r11          # j
+    LOAD r5           # P
+    PUSH 2
+    MUL
+    LOAD r12
+    MUL
+    LOAD r13
+    MUL               # value = P * 2 * a_k * a_m
+    ADDQUAD r4
+  NEXT
+NEXT
+
+# === Output model ===
+PUSH 0
+OUTPUT r4
+HALT

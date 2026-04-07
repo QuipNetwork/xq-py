@@ -1,0 +1,173 @@
+# Set Cover Encoder (using PENALTYEQ + manual slacks)
+#
+# Coverage constraint for each element i:
+#   At least 1 of the covering subsets must be selected.
+#   sum(x_j for j in C_i) >= 1
+#   Converted to equality: sum(x_j) - s0 - 2*s1 - ... = 1
+#   Applied as PENALTYEQ with negative slack coefficients.
+#
+# Input:
+#   0: N (int, universe size)
+#   1: M (int, number of subsets)
+#   2: coverage (vec<int>, flat: [count, idx, idx, ..., count, idx, ...])
+#   3: A (int, subset cost weight)
+#   4: P (int, coverage penalty)
+#
+# Output:
+#   0: BQMX model
+
+# === Read inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+PUSH 3
+INPUT r3
+PUSH 4
+INPUT r4
+
+# === First pass: compute total slack variables needed ===
+PUSH 0
+STOW r5               # offset
+PUSH 0
+STOW r6               # total_slacks
+
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+
+  LOAD r5
+  VECGET r2
+  STOW r8             # group_size
+
+  # Slacks needed: if group_size <= 1: 0, else: bitlen(group_size - 1)
+  LOAD r8
+  PUSH 2
+  GTE
+  NOT
+  JUMPI .0
+  LOAD r8
+  DEC
+  BITLEN
+  LOAD r6
+  ADD
+  STOW r6
+  TARGET .0
+
+  # Advance offset
+  LOAD r5
+  INC
+  LOAD r8
+  ADD
+  STOW r5
+NEXT
+
+# === Allocate model: M + total_slacks ===
+LOAD r1
+LOAD r6
+ADD
+STOW r11              # total_vars
+LOAD r11
+BQMX r12              # model
+
+# === Objective: A * x_j for each subset ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10
+  LOAD r10
+  LOAD r3
+  ADDLINE r12
+NEXT
+
+# === Coverage constraints ===
+PUSH 0
+STOW r5               # reset offset
+LOAD r1
+STOW r13              # next_slack_start = M
+
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+
+  LOAD r5
+  VECGET r2
+  STOW r8             # group_size
+
+  # Build indices and coefficients vecs
+  VECI r14             # indices
+  VECI r15             # coefficients
+
+  # Add subset variables (coefficient = 1)
+  PUSH 0
+  LOAD r8
+  RANGE
+    LVAL r16
+    LOAD r5
+    INC
+    LOAD r16
+    ADD
+    VECGET r2          # subset_idx
+    VECPUSH r14
+    PUSH 1
+    VECPUSH r15
+  NEXT
+
+  # Add slack variables if group_size >= 2
+  LOAD r8
+  PUSH 2
+  GTE
+  NOT
+  JUMPI .1
+
+  LOAD r8
+  DEC
+  BITLEN
+  STOW r9             # slack_count
+
+  # Manual slack generation: append -(2^j) coefficients
+  PUSH 0
+  LOAD r9
+  RANGE
+    LVAL r16
+    LOAD r13
+    LOAD r16
+    ADD
+    VECPUSH r14        # slack var index
+
+    PUSH 1
+    LOAD r16
+    SHL
+    NEG
+    VECPUSH r15        # coefficient = -(2^j)
+  NEXT
+
+  # Advance slack start
+  LOAD r13
+  LOAD r9
+  ADD
+  STOW r13
+
+  TARGET .1
+
+  # Apply PENALTYEQ
+  LOAD r4             # P
+  PUSH 1              # target = 1
+  PENALTYEQ r12 r14 r15
+
+  # Advance offset
+  LOAD r5
+  INC
+  LOAD r8
+  ADD
+  STOW r5
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r12
+HALT

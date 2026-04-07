@@ -1,0 +1,253 @@
+# Max-3-SAT Encoder (using REDUCE)
+#
+# Same formulation as asm/ but uses REDUCE opcode for degree reduction.
+# For each clause (l1 OR l2 OR l3):
+#   Penalty = P * (1-l1)(1-l2)(1-l3)
+#   Let comp_i = complement of literal i (what makes it violated)
+#   Expand (comp_a)(comp_b)(comp_c) where comp = coeff*x + const
+#   
+#   REDUCE replaces comp_a * comp_b product with auxiliary w,
+#   then the cubic becomes w * comp_c (quadratic).
+#
+# Input:
+#   0: N (int, variable count)
+#   1: M (int, clause count)
+#   2: clauses (vec<int>, flat [var, neg, var, neg, var, neg, ...])
+#   3: P (int, clause penalty weight)
+#   4: P_aux (int, auxiliary constraint penalty)
+#
+# Output:
+#   0: BQMX model (N + M variables: N original + M auxiliary)
+
+# === Read inputs ===
+PUSH 0
+INPUT r0
+PUSH 1
+INPUT r1
+PUSH 2
+INPUT r2
+PUSH 3
+INPUT r3
+PUSH 4
+INPUT r4
+
+# === Allocate model with N + M vars ===
+# (REDUCE will extend model.size for each auxiliary)
+LOAD r0
+BQMX r5
+
+# === For each clause ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10
+
+  # offset = c * 6
+  LOAD r10
+  PUSH 6
+  MUL
+  STOW r11
+
+  # Read literal 0: var, neg
+  LOAD r11
+  VECGET r2
+  STOW r12            # a_var
+  LOAD r11
+  INC
+  VECGET r2
+  STOW r15            # a_neg
+
+  # Read literal 1: var, neg
+  LOAD r11
+  PUSH 2
+  ADD
+  VECGET r2
+  STOW r13            # b_var
+  LOAD r11
+  PUSH 3
+  ADD
+  VECGET r2
+  STOW r16            # b_neg
+
+  # Read literal 2: var, neg
+  LOAD r11
+  PUSH 4
+  ADD
+  VECGET r2
+  STOW r14            # c_var
+  LOAD r11
+  PUSH 5
+  ADD
+  VECGET r2
+  STOW r17            # c_neg
+
+  # Compute complement coefficients and constants
+  # neg=1: complement = xi,   coeff=1,  const=0
+  # neg=0: complement = 1-xi, coeff=-1, const=1
+
+  # Literal a
+  LOAD r15
+  PUSH 1
+  EQ
+  NOT
+  JUMPI .0
+  PUSH 1
+  STOW r18
+  PUSH 0
+  STOW r21
+  JUMP .1
+  TARGET .0
+  PUSH -1
+  STOW r18
+  PUSH 1
+  STOW r21
+  TARGET .1
+
+  # Literal b
+  LOAD r16
+  PUSH 1
+  EQ
+  NOT
+  JUMPI .2
+  PUSH 1
+  STOW r19
+  PUSH 0
+  STOW r22
+  JUMP .3
+  TARGET .2
+  PUSH -1
+  STOW r19
+  PUSH 1
+  STOW r22
+  TARGET .3
+
+  # Literal c
+  LOAD r17
+  PUSH 1
+  EQ
+  NOT
+  JUMPI .4
+  PUSH 1
+  STOW r20
+  PUSH 0
+  STOW r23
+  JUMP .5
+  TARGET .4
+  PUSH -1
+  STOW r20
+  PUSH 1
+  STOW r23
+  TARGET .5
+
+  # Intermediate products for (a_coeff*xa + a_const)(b_coeff*xb + b_const)
+  LOAD r18
+  LOAD r19
+  MUL
+  STOW r25            # ab_xy = a_coeff * b_coeff
+
+  LOAD r18
+  LOAD r22
+  MUL
+  STOW r26            # ab_x = a_coeff * b_const
+
+  LOAD r19
+  LOAD r21
+  MUL
+  STOW r27            # ab_y = b_coeff * a_const
+
+  LOAD r21
+  LOAD r22
+  MUL
+  STOW r28            # ab_c = a_const * b_const
+
+  # === REDUCE: replace xa*xb with auxiliary w ===
+  LOAD r12            # var_a
+  LOAD r13            # var_b
+  LOAD r4             # P_aux
+  REDUCE r5           # pushes w_index onto stack
+  STOW r24            # r24 = w_index
+
+  # === Add QUBO terms ===
+  # The full expansion of P * (comp_a)(comp_b)(comp_c) is:
+  #   P * [ab_x*c_const*xa + ab_y*c_const*xb + ab_c*c_coeff*xc
+  #        + ab_xy*c_const*xa*xb + ab_x*c_coeff*xa*xc + ab_y*c_coeff*xb*xc
+  #        + ab_xy*c_coeff*xa*xb*xc]
+  #
+  # The cubic term ab_xy*c_coeff*xa*xb*xc becomes ab_xy*c_coeff*w*xc
+  # The quadratic term ab_xy*c_const*xa*xb is already handled by REDUCE
+  # (REDUCE adds P_aux constraint terms for xa*xb, but the clause penalty
+  #  coefficient ab_xy*c_const on xa*xb must be added separately)
+
+  # Linear xa: P * ab_x * c_const
+  LOAD r12
+  LOAD r3
+  LOAD r26
+  MUL
+  LOAD r23
+  MUL
+  ADDLINE r5
+
+  # Linear xb: P * ab_y * c_const
+  LOAD r13
+  LOAD r3
+  LOAD r27
+  MUL
+  LOAD r23
+  MUL
+  ADDLINE r5
+
+  # Linear xc: P * ab_c * c_coeff
+  LOAD r14
+  LOAD r3
+  LOAD r28
+  MUL
+  LOAD r20
+  MUL
+  ADDLINE r5
+
+  # Quadratic xa*xb: P * ab_xy * c_const
+  LOAD r12
+  LOAD r13
+  LOAD r3
+  LOAD r25
+  MUL
+  LOAD r23
+  MUL
+  ADDQUAD r5
+
+  # Quadratic xa*xc: P * ab_x * c_coeff
+  LOAD r12
+  LOAD r14
+  LOAD r3
+  LOAD r26
+  MUL
+  LOAD r20
+  MUL
+  ADDQUAD r5
+
+  # Quadratic xb*xc: P * ab_y * c_coeff
+  LOAD r13
+  LOAD r14
+  LOAD r3
+  LOAD r27
+  MUL
+  LOAD r20
+  MUL
+  ADDQUAD r5
+
+  # Quadratic w*xc: P * ab_xy * c_coeff (reduced cubic)
+  LOAD r24
+  LOAD r14
+  LOAD r3
+  LOAD r25
+  MUL
+  LOAD r20
+  MUL
+  ADDQUAD r5
+
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r5
+HALT

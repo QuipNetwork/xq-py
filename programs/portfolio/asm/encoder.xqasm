@@ -1,0 +1,293 @@
+# Portfolio Optimization Encoder (existing opcodes)
+#
+# HOBO formulation with 4 moments:
+#   H = -lambda1 * sum(mu_i * x_i)                          [linear: returns]
+#       + lambda2 * sum(sigma_ij * x_i * x_j)               [quadratic: variance]
+#       - lambda3 * sum(s_ijk * x_i * x_j * x_k)            [cubic: skewness]
+#       + lambda4 * sum(kappa_ijkl * x_i * x_j * x_k * x_l) [quartic: kurtosis]
+#
+# Cubic terms: w = x_i * x_j, then coeff * w * x_k
+# Quartic terms: w1 = x_i * x_j, w2 = w1 * x_k, then coeff * w2 * x_l
+#
+# Input:
+#   0: N (int, number of assets)
+#   1: returns (vec<int>, expected returns * 100)
+#   2: covariance (vec<int>, flat upper triangle [sigma_00, sigma_01, ..., sigma_11, ...])
+#   3: skewness_terms (vec<int>, flat: [i, j, k, coeff, ...])
+#   4: kurtosis_terms (vec<int>, flat: [i, j, k, l, coeff, ...])
+#   5: num_skew (int, number of skewness terms)
+#   6: num_kurt (int, number of kurtosis terms)
+#   7: P_aux (int, auxiliary constraint penalty)
+#
+# Output:
+#   0: BQMX model
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # N
+PUSH 1
+INPUT r1              # returns
+PUSH 2
+INPUT r2              # covariance
+PUSH 3
+INPUT r3              # skewness terms
+PUSH 4
+INPUT r4              # kurtosis terms
+PUSH 5
+INPUT r5              # num_skew
+PUSH 6
+INPUT r6              # num_kurt
+PUSH 7
+INPUT r7              # P_aux
+
+# === Total vars = N + num_skew + 2*num_kurt ===
+LOAD r0
+LOAD r5
+ADD
+LOAD r6
+PUSH 2
+MUL
+ADD
+STOW r8               # total_vars
+
+# === Allocate model ===
+LOAD r8
+BQMX r9
+
+# === Linear: -lambda1 * mu_i (returns already include sign and lambda) ===
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10
+  LOAD r10            # var index
+  LOAD r10
+  VECGET r1           # returns[i]
+  ADDLINE r9
+NEXT
+
+# === Quadratic: lambda2 * sigma_ij (covariance already includes lambda) ===
+# Covariance stored as flat upper triangle: for each pair (i,j) with i <= j
+PUSH 0
+STOW r11              # offset into covariance vec
+PUSH 0
+LOAD r0
+RANGE
+  LVAL r10            # i
+  LOAD r10            # start = i
+  LOAD r0
+  LOAD r10
+  SUB                 # count = N - i
+  RANGE
+    LVAL r12           # j (from i to N-1)
+
+    LOAD r11
+    VECGET r2          # sigma_ij
+    STOW r13
+
+    # Skip zero coefficients
+    LOAD r13
+    PUSH 0
+    EQ
+    NOT
+    JUMPI .0
+
+    # i == j: linear term
+    LOAD r10
+    LOAD r12
+    EQ
+    NOT
+    JUMPI .1
+    LOAD r10
+    LOAD r13
+    ADDLINE r9
+    JUMP .2
+    TARGET .1
+    # i != j: quadratic term
+    LOAD r10
+    LOAD r12
+    LOAD r13
+    ADDQUAD r9
+    TARGET .2
+
+    TARGET .0
+    LOAD r11
+    INC
+    STOW r11
+  NEXT
+NEXT
+
+# === Cubic: skewness terms with manual reduction ===
+# Track auxiliary variable index
+LOAD r0
+STOW r14              # next_aux = N
+
+PUSH 0
+LOAD r5
+RANGE
+  LVAL r10            # t
+
+  LOAD r10
+  PUSH 4
+  MUL
+  STOW r11            # offset = t * 4
+
+  LOAD r11
+  VECGET r3
+  STOW r15            # i
+  LOAD r11
+  INC
+  VECGET r3
+  STOW r16            # j
+  LOAD r11
+  PUSH 2
+  ADD
+  VECGET r3
+  STOW r17            # k
+  LOAD r11
+  PUSH 3
+  ADD
+  VECGET r3
+  STOW r18            # coeff
+
+  # w = x_i * x_j (auxiliary at r14)
+  # P_aux * (x_i*x_j - 2*x_i*w - 2*x_j*w + 3*w)
+  LOAD r15
+  LOAD r16
+  LOAD r7
+  ADDQUAD r9
+
+  LOAD r15
+  LOAD r14
+  LOAD r7
+  PUSH -2
+  MUL
+  ADDQUAD r9
+
+  LOAD r16
+  LOAD r14
+  LOAD r7
+  PUSH -2
+  MUL
+  ADDQUAD r9
+
+  LOAD r14
+  LOAD r7
+  PUSH 3
+  MUL
+  ADDLINE r9
+
+  # Reduced: coeff * w * x_k
+  LOAD r14
+  LOAD r17
+  LOAD r18
+  ADDQUAD r9
+
+  # Advance aux index
+  LOAD r14
+  INC
+  STOW r14
+NEXT
+
+# === Quartic: kurtosis terms with chained manual reduction ===
+PUSH 0
+LOAD r6
+RANGE
+  LVAL r10            # t
+
+  LOAD r10
+  PUSH 5
+  MUL
+  STOW r11            # offset = t * 5
+
+  LOAD r11
+  VECGET r4
+  STOW r15            # i
+  LOAD r11
+  INC
+  VECGET r4
+  STOW r16            # j
+  LOAD r11
+  PUSH 2
+  ADD
+  VECGET r4
+  STOW r17            # k
+  LOAD r11
+  PUSH 3
+  ADD
+  VECGET r4
+  STOW r18            # l
+  LOAD r11
+  PUSH 4
+  ADD
+  VECGET r4
+  STOW r19            # coeff
+
+  # w1 = x_i * x_j (at r14)
+  LOAD r15
+  LOAD r16
+  LOAD r7
+  ADDQUAD r9
+  LOAD r15
+  LOAD r14
+  LOAD r7
+  PUSH -2
+  MUL
+  ADDQUAD r9
+  LOAD r16
+  LOAD r14
+  LOAD r7
+  PUSH -2
+  MUL
+  ADDQUAD r9
+  LOAD r14
+  LOAD r7
+  PUSH 3
+  MUL
+  ADDLINE r9
+
+  # w1_idx = r14, advance
+  LOAD r14
+  STOW r20            # save w1
+  LOAD r14
+  INC
+  STOW r14
+
+  # w2 = w1 * x_k (at r14)
+  LOAD r20
+  LOAD r17
+  LOAD r7
+  ADDQUAD r9
+  LOAD r20
+  LOAD r14
+  LOAD r7
+  PUSH -2
+  MUL
+  ADDQUAD r9
+  LOAD r17
+  LOAD r14
+  LOAD r7
+  PUSH -2
+  MUL
+  ADDQUAD r9
+  LOAD r14
+  LOAD r7
+  PUSH 3
+  MUL
+  ADDLINE r9
+
+  # Reduced: coeff * w2 * x_l
+  LOAD r14
+  LOAD r18
+  LOAD r19
+  ADDQUAD r9
+
+  # Advance aux index
+  LOAD r14
+  INC
+  STOW r14
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r9
+HALT

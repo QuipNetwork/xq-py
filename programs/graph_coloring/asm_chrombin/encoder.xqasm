@@ -1,0 +1,250 @@
+# Graph Coloring Encoder — Binary (CHROMBIN) encoding
+#
+# K=4 colors encoded with 2 bits per vertex.
+# Vertex i uses variables: bit0 = 2*i, bit1 = 2*i + 1
+# Color = bit0 + 2*bit1 (0,1,2,3)
+#
+# No one-hot constraint needed (all 4 bit patterns are valid colors).
+#
+# Adjacency constraint for edge (i,j):
+#   Penalty when same color: P * delta(a0,b0) * delta(a1,b1)
+#   where delta(x,y) = 1 - x - y + 2*x*y
+#
+# Expansion of P * D0 * D1:
+#   Constant: P  (dropped — QUBO ignores constants)
+#   Linear:   P * (-a0 - b0 - a1 - b1)
+#   Quad:     P * (2*a0*b0 + 2*a1*b1 + a0*a1 + a0*b1 + b0*a1 + b0*b1)
+#   Cubic:    P * (-2*a0*a1*b1 - 2*b0*a1*b1 - 2*a0*b0*a1 - 2*a0*b0*b1)
+#   Quartic:  P * (4*a0*b0*a1*b1)
+#
+# Cubic and quartic terms use REDUCE for degree reduction.
+#
+# Symmetry breaking: vertex 0 fixed to color 0 (bit0=0, bit1=0)
+#   Penalty on both bits of vertex 0 being 1.
+#
+# Input:
+#   0: N (int, vertex count)
+#   1: E (int, edge count)
+#   2: edges (vec<int>, flat: [i, j, ...])
+#   3: P (int, adjacency penalty)
+#   4: P_aux (int, auxiliary constraint penalty)
+#   5: P_sym (int, symmetry breaking penalty)
+#
+# Output:
+#   0: BQMX model
+
+# === Read inputs ===
+PUSH 0
+INPUT r0              # N
+PUSH 1
+INPUT r1              # E
+PUSH 2
+INPUT r2              # edges
+PUSH 3
+INPUT r3              # P
+PUSH 4
+INPUT r4              # P_aux
+PUSH 5
+INPUT r5              # P_sym
+
+# === Allocate model: 2*N original vars (REDUCE extends for auxiliaries) ===
+LOAD r0
+PUSH 2
+MUL
+BQMX r6
+
+# === Symmetry breaking: vertex 0 = color 0, so bit0=0 and bit1=0 ===
+# Penalize bit0 and bit1 of vertex 0 being 1
+PUSH 0               # var 0 = vertex 0, bit 0
+LOAD r5
+ADDLINE r6
+PUSH 1               # var 1 = vertex 0, bit 1
+LOAD r5
+ADDLINE r6
+
+# === Adjacency constraints ===
+PUSH 0
+LOAD r1
+RANGE
+  LVAL r10            # edge index
+
+  LOAD r10
+  PUSH 2
+  MUL
+  STOW r7             # offset
+
+  LOAD r7
+  VECGET r2
+  STOW r8             # vertex i
+
+  LOAD r7
+  INC
+  VECGET r2
+  STOW r9             # vertex j
+
+  # Compute variable indices
+  # a0 = 2*i, a1 = 2*i+1, b0 = 2*j, b1 = 2*j+1
+  LOAD r8
+  PUSH 2
+  MUL
+  STOW r11            # a0
+
+  LOAD r11
+  INC
+  STOW r12            # a1
+
+  LOAD r9
+  PUSH 2
+  MUL
+  STOW r13            # b0
+
+  LOAD r13
+  INC
+  STOW r14            # b1
+
+  # === Linear terms: P * (-a0 - b0 - a1 - b1) ===
+  LOAD r11
+  LOAD r3
+  NEG
+  ADDLINE r6
+
+  LOAD r13
+  LOAD r3
+  NEG
+  ADDLINE r6
+
+  LOAD r12
+  LOAD r3
+  NEG
+  ADDLINE r6
+
+  LOAD r14
+  LOAD r3
+  NEG
+  ADDLINE r6
+
+  # === Quadratic terms ===
+  # 2*P * a0*b0
+  LOAD r11
+  LOAD r13
+  LOAD r3
+  PUSH 2
+  MUL
+  ADDQUAD r6
+
+  # 2*P * a1*b1
+  LOAD r12
+  LOAD r14
+  LOAD r3
+  PUSH 2
+  MUL
+  ADDQUAD r6
+
+  # P * a0*a1
+  LOAD r11
+  LOAD r12
+  LOAD r3
+  ADDQUAD r6
+
+  # P * a0*b1
+  LOAD r11
+  LOAD r14
+  LOAD r3
+  ADDQUAD r6
+
+  # P * b0*a1
+  LOAD r13
+  LOAD r12
+  LOAD r3
+  ADDQUAD r6
+
+  # P * b0*b1
+  LOAD r13
+  LOAD r14
+  LOAD r3
+  ADDQUAD r6
+
+  # === Cubic terms (4 terms, each needs 1 REDUCE) ===
+
+  # -2P * a0*a1*b1: REDUCE(a0, a1) -> w, then -2P * w * b1
+  LOAD r11
+  LOAD r12
+  LOAD r4
+  REDUCE r6
+  STOW r15            # w = a0*a1
+  LOAD r15
+  LOAD r14
+  LOAD r3
+  PUSH -2
+  MUL
+  ADDQUAD r6
+
+  # -2P * b0*a1*b1: REDUCE(a1, b1) -> w, then -2P * w * b0
+  LOAD r12
+  LOAD r14
+  LOAD r4
+  REDUCE r6
+  STOW r15            # w = a1*b1
+  LOAD r15
+  LOAD r13
+  LOAD r3
+  PUSH -2
+  MUL
+  ADDQUAD r6
+
+  # -2P * a0*b0*a1: REDUCE(a0, b0) -> w, then -2P * w * a1
+  LOAD r11
+  LOAD r13
+  LOAD r4
+  REDUCE r6
+  STOW r15            # w = a0*b0
+  LOAD r15
+  LOAD r12
+  LOAD r3
+  PUSH -2
+  MUL
+  ADDQUAD r6
+
+  # -2P * a0*b0*b1: reuse w = a0*b0, then -2P * w * b1
+  LOAD r15
+  LOAD r14
+  LOAD r3
+  PUSH -2
+  MUL
+  ADDQUAD r6
+
+  # === Quartic term: 4P * a0*b0*a1*b1 ===
+  # w1 = a0*b0 (already have at r15), w2 = REDUCE(w1, a1*b1)
+  # But a1*b1 isn't a single variable. Need: REDUCE(a1, b1) -> w_ab, then REDUCE(w_a0b0, w_ab)
+  # Actually: w_a0b0 already computed. w_a1b1 already computed.
+  # But those w values were from earlier REDUCE calls — their indices are gone.
+  # Need to recompute or save them.
+
+  # REDUCE(a0, b0) -> w_a0b0
+  LOAD r11
+  LOAD r13
+  LOAD r4
+  REDUCE r6
+  STOW r16            # w_a0b0
+
+  # REDUCE(w_a0b0, a1) -> w2
+  LOAD r16
+  LOAD r12
+  LOAD r4
+  REDUCE r6
+  STOW r17            # w2 = a0*b0*a1
+
+  # 4P * w2 * b1
+  LOAD r17
+  LOAD r14
+  LOAD r3
+  PUSH 4
+  MUL
+  ADDQUAD r6
+
+NEXT
+
+# === Output ===
+PUSH 0
+OUTPUT r6
+HALT

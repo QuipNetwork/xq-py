@@ -92,16 +92,18 @@ class Executor:
         """Build the opcode -> handler dispatch table."""
         return {
             # Control flow
-            Opcode.NOP: self._runner_NOP,
-            Opcode.HALT: self._runner_HALT,
             Opcode.TARGET: self._runner_TARGET,
-            Opcode.JUMP: self._runner_JUMP,
-            Opcode.JUMPI: self._runner_JUMPI,
+            Opcode.JUMP1: self._runner_JUMP1,
+            Opcode.JUMPI1: self._runner_JUMPI1,
+            Opcode.JUMP2: self._runner_JUMP2,
+            Opcode.JUMPI2: self._runner_JUMPI2,
+            Opcode.LIDX: self._runner_LIDX,
+            Opcode.LVAL: self._runner_LVAL,
+            Opcode.NEXT: self._runner_NEXT,
             Opcode.RANGE: self._runner_RANGE,
             Opcode.ITER: self._runner_ITER,
-            Opcode.NEXT: self._runner_NEXT,
-            Opcode.LVAL: self._runner_LVAL,
-            Opcode.LIDX: self._runner_LIDX,
+            Opcode.NOP: self._runner_NOP,
+            Opcode.HALT: self._runner_HALT,
             # Stack & Register I/O
             Opcode.PUSH1: self._runner_PUSH,
             Opcode.PUSH2: self._runner_PUSH,
@@ -314,18 +316,36 @@ class Executor:
         """TARGET: No-op (targets pre-scanned before execution)."""
         pass
 
-    def _runner_JUMP(self, instr: Instruction) -> None:
-        """JUMP: Unconditional jump to target."""
+    def _runner_JUMP1(self, instr: Instruction) -> None:
+        """JUMP1: Unconditional jump to target (u8)."""
         target_id = instr.operands[0]
         pc = self.state.jc.resolve_target(target_id)
         if pc is None:
             raise TargetNotFound(target_id)
-        # Jump to target, then step() will advance to next instruction
         self.state.jump_to(pc)
 
-    def _runner_JUMPI(self, instr: Instruction) -> None:
-        """JUMPI: Jump to target if top of stack is non-zero."""
+    def _runner_JUMPI1(self, instr: Instruction) -> None:
+        """JUMPI1: Jump to target if top of stack is non-zero (u8)."""
         target_id = instr.operands[0]
+        condition = self.state.pop()
+
+        if condition != 0:
+            pc = self.state.jc.resolve_target(target_id)
+            if pc is None:
+                raise TargetNotFound(target_id)
+            self.state.jump_to(pc)
+
+    def _runner_JUMP2(self, instr: Instruction) -> None:
+        """JUMP2: Unconditional jump to target (u16)."""
+        target_id = (instr.operands[0] << 8) | instr.operands[1]
+        pc = self.state.jc.resolve_target(target_id)
+        if pc is None:
+            raise TargetNotFound(target_id)
+        self.state.jump_to(pc)
+
+    def _runner_JUMPI2(self, instr: Instruction) -> None:
+        """JUMPI2: Jump to target if top of stack is non-zero (u16)."""
+        target_id = (instr.operands[0] << 8) | instr.operands[1]
         condition = self.state.pop()
 
         if condition != 0:

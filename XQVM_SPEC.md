@@ -82,7 +82,7 @@ Programs execute independently with no shared state. Communication occurs only t
 
 ---
 
-## Instruction Set (84 opcodes)
+## Instruction Set (87 opcodes)
 
 ### Notation
 
@@ -101,16 +101,20 @@ The following conventions are used throughout this section to describe opcode be
 
 | Code | Mnemonic | Arguments | Stack effect | Register effect | Interpretation |
 |------|----------|-----------|--------------|-----------------|----------------|
-| `0x00` | `NOP` | — | `[...] → [...]` | — | No operation. |
-| `0x01` | `TARGET` | — | `[...] → [...]` | — | Mark a valid jump destination. No operand in bytecode; during pre-scan, each TARGET is assigned a sequential ID (0, 1, 2, ...) in program order and registered at the current PC. No-op at runtime. In assembly source, `TARGET .N` is syntactic sugar — the `.N` label is resolved by the assembler and not encoded. |
-| `0x02` | `JUMP` | `.N` | `[...] → [...]` | — | Set PC to the instruction at `targets[N]`, where N is the sequential target ID (u8). Unconditional. Error: `TargetNotFound` if N is undefined. |
-| `0x03` | `JUMPI` | `.N` | `[..., cond] → [...]` | — | Pop `cond`. If `cond != 0`, set PC to `targets[N]` (u8); otherwise fall through. Error: `TargetNotFound` if N is undefined and condition is non-zero. |
-| `0x04` | `NEXT` | — | `[...] → [...]` | — | Advance the active loop frame index. If more values remain, set PC to `frame.target` (loop body start). Otherwise pop the frame and fall through. Error: `LoopError` if no loop frame is active. |
-| `0x05` | `LVAL` | `reg` | `[...] → [...]` | `write` — `reg ← values[index]` | Copy the current loop value into `reg`. For RANGE loops: `reg ← int`. For ITER loops: `reg ← vec element` (type preserved: int or xqmx). Error: `LoopError` if no active loop. |
-| `0x06` | `LIDX` | `reg` | `[...] → [...]` | `write` — `reg ← index + start_offset` | Copy the current loop index (offset-adjusted) into `reg`. For RANGE loops: equivalent to LVAL (values are indices). For ITER loops: returns the original vec index (`frame.index + start_idx`). Error: `LoopError` if no active loop. |
-| `0x07` | `RANGE` | — | `[..., start, count] → [...]` | — | Pop `count`, then `start`. Generate values `[start, start+1, ..., start+count-1]`. Push a loop frame with `target = PC+1` and `start_offset = start`. If `count <= 0`, the loop body is skipped entirely. |
-| `0x08` | `ITER` | `reg` | `[..., start_idx, end_idx] → [...]` | `read` — validates `reg` holds `vec` | Pop `end_idx`, then `start_idx`. Read vec from `reg`. Copy elements `vec[start_idx:end_idx]` into a loop frame with `target = PC+1` and `start_offset = start_idx`. If `start_idx >= end_idx`, the loop body is skipped. Elements are copied for immutability. Error: `TypeMismatch` if `reg` is not a vec. |
-| `0x09` | `HALT` | — | `[...] → [...]` | — | Stop execution immediately. |
+| `0x00` | `TARGET` | — | `[...] → [...]` | — | Mark a valid jump destination. No operand in bytecode; during pre-scan, each TARGET is assigned a sequential ID (0, 1, 2, ...) in program order and registered at the current PC. No-op at runtime. In assembly source, `TARGET .N` is syntactic sugar — the `.N` label is resolved by the assembler and not encoded. |
+| `0x01` | `JUMP1` | `.N` | `[...] → [...]` | — | Set PC to the instruction at `targets[N]`, where N is the sequential target ID (u8). Unconditional. Error: `TargetNotFound` if N is undefined. |
+| `0x02` | `JUMPI1` | `.N` | `[..., cond] → [...]` | — | Pop `cond`. If `cond != 0`, set PC to `targets[N]` (u8); otherwise fall through. Error: `TargetNotFound` if N is undefined and condition is non-zero. |
+| `0x03` | `JUMP2` | `hi`, `lo` | `[...] → [...]` | — | Set PC to the instruction at `targets[N]`, where N is the sequential target ID encoded as u16 big-endian (`N = hi << 8 \| lo`). Unconditional. Error: `TargetNotFound` if N is undefined. |
+| `0x04` | `JUMPI2` | `hi`, `lo` | `[..., cond] → [...]` | — | Pop `cond`. If `cond != 0`, set PC to `targets[N]` (u16 big-endian); otherwise fall through. Error: `TargetNotFound` if N is undefined and condition is non-zero. |
+| `0x05` | `LIDX` | `reg` | `[...] → [...]` | `write` — `reg ← index + start_offset` | Copy the current loop index (offset-adjusted) into `reg`. For RANGE loops: equivalent to LVAL (values are indices). For ITER loops: returns the original vec index (`frame.index + start_idx`). Error: `LoopError` if no active loop. |
+| `0x06` | `LVAL` | `reg` | `[...] → [...]` | `write` — `reg ← values[index]` | Copy the current loop value into `reg`. For RANGE loops: `reg ← int`. For ITER loops: `reg ← vec element` (type preserved: int or xqmx). Error: `LoopError` if no active loop. |
+| `0x07` | `NEXT` | — | `[...] → [...]` | — | Advance the active loop frame index. If more values remain, set PC to `frame.target` (loop body start). Otherwise pop the frame and fall through. Error: `LoopError` if no loop frame is active. |
+| `0x08` | `RANGE` | — | `[..., start, count] → [...]` | — | Pop `count`, then `start`. Generate values `[start, start+1, ..., start+count-1]`. Push a loop frame with `target = PC+1` and `start_offset = start`. If `count <= 0`, the loop body is skipped entirely. |
+| `0x09` | `ITER` | `reg` | `[..., start_idx, end_idx] → [...]` | `read` — validates `reg` holds `vec` | Pop `end_idx`, then `start_idx`. Read vec from `reg`. Copy elements `vec[start_idx:end_idx]` into a loop frame with `target = PC+1` and `start_offset = start_idx`. If `start_idx >= end_idx`, the loop body is skipped. Elements are copied for immutability. Error: `TypeMismatch` if `reg` is not a vec. |
+| `0xF0` | `NOP` | — | `[...] → [...]` | — | No operation. |
+| `0xFF` | `HALT` | — | `[...] → [...]` | — | Stop execution immediately. |
+
+**JUMP sugar:** In assembly source, `JUMP .N` and `JUMPI .N` are syntactic sugar. The assembler resolves the label and selects `JUMP1`/`JUMPI1` (u8) or `JUMP2`/`JUMPI2` (u16) based on the target ID value, mirroring the `PUSH`/`PUSH1`–`PUSH8` sugar pattern.
 
 ---
 

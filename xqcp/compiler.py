@@ -32,6 +32,23 @@ if TYPE_CHECKING:
     from .problem import Action, Problem
 
 # ---------------------------------------------------------------------------
+# Target ID allocator (for branch compilation)
+# ---------------------------------------------------------------------------
+
+
+class _TargetAllocator:
+    """Allocates sequential target label IDs for JUMP/JUMPI/TARGET."""
+
+    def __init__(self, start: int = 0) -> None:
+        self._next = start
+
+    def alloc(self) -> int:
+        tid = self._next
+        self._next += 1
+        return tid
+
+
+# ---------------------------------------------------------------------------
 # Compiler: encoder
 # ---------------------------------------------------------------------------
 
@@ -40,6 +57,7 @@ def compile_encoder(prob: Problem) -> str:
     """Generate the encoder .xqasm program."""
     lines: list[str] = []
     indent = 0
+    targets = _TargetAllocator()
 
     # Partition actions into sections
     input_actions: list[Action] = []
@@ -80,12 +98,12 @@ def compile_encoder(prob: Problem) -> str:
     if obj_actions:
         lines.append("")
         lines.append("# === Objective ===")
-        _emit_body_actions(obj_actions, lines, 0)
+        _emit_body_actions(obj_actions, lines, 0, targets)
 
     if con_actions:
         lines.append("")
         lines.append("# === Constraints ===")
-        _emit_body_actions(con_actions, lines, 0)
+        _emit_body_actions(con_actions, lines, 0, targets)
 
     # --- Output ---
     lines.append("")
@@ -143,15 +161,16 @@ def _input_reg(expr: Expr) -> int | None:
 
 def _partition_body(body_actions: list[Action]) -> tuple[list[Action], list[Action]]:
     """Split body actions into objective and constraint sections by top-level block."""
+    constraint_kinds = {"onehot_row", "onehot_col", "exclude", "implies"}
     blocks: list[list[Action]] = []
     current_block: list[Action] = []
     depth = 0
 
     for action in body_actions:
         current_block.append(action)
-        if action.kind == "range_start":
+        if action.kind in ("range_start", "iter_start"):
             depth += 1
-        elif action.kind == "range_end":
+        elif action.kind in ("range_end", "iter_end"):
             depth -= 1
             if depth == 0:
                 blocks.append(current_block)
@@ -166,7 +185,7 @@ def _partition_body(body_actions: list[Action]) -> tuple[list[Action], list[Acti
     obj_actions: list[Action] = []
     con_actions: list[Action] = []
     for block in blocks:
-        has_constraint = any(a.kind in ("onehot_row", "onehot_col") for a in block)
+        has_constraint = any(a.kind in constraint_kinds for a in block)
         if has_constraint:
             con_actions.extend(block)
         else:
@@ -175,7 +194,7 @@ def _partition_body(body_actions: list[Action]) -> tuple[list[Action], list[Acti
     return obj_actions, con_actions
 
 
-def _emit_body_actions(actions: list[Action], lines: list[str], indent: int) -> None:
+def _emit_body_actions(actions: list[Action], lines: list[str], indent: int, targets: _TargetAllocator) -> None:
     """Emit a sequence of body actions (loops, operations) as assembly."""
     for action in actions:
         kind = action.kind
@@ -189,6 +208,14 @@ def _emit_body_actions(actions: list[Action], lines: list[str], indent: int) -> 
             indent -= 1
             lines.append(line("NEXT", indent))
 
+        elif kind == "iter_start":
+            _emit_iter_start(d, lines, indent)
+            indent += 1
+
+        elif kind == "iter_end":
+            indent -= 1
+            lines.append(line("NEXT", indent))
+
         elif kind == "stow":
             d["expr"].emit(lines, indent)
             lines.append(line(f"STOW r{d['reg']}", indent))
@@ -199,6 +226,12 @@ def _emit_body_actions(actions: list[Action], lines: list[str], indent: int) -> 
         elif kind == "add_quadratic":
             _emit_add_quadratic(d, lines, indent)
 
+        elif kind == "set_linear":
+            _emit_set_linear(d, lines, indent)
+
+        elif kind == "set_quadratic":
+            _emit_set_quadratic(d, lines, indent)
+
         elif kind == "onehot_row":
             d["row"].emit(lines, indent)
             lines.append(line(f"PUSH {fmt_int(d['penalty'])}", indent))
@@ -208,6 +241,15 @@ def _emit_body_actions(actions: list[Action], lines: list[str], indent: int) -> 
             d["col"].emit(lines, indent)
             lines.append(line(f"PUSH {fmt_int(d['penalty'])}", indent))
             lines.append(line(f"ONEHOTC r{d['model'].reg}", indent))
+
+        elif kind == "exclude":
+            _emit_exclude(d, lines, indent)
+
+        elif kind == "implies":
+            _emit_implies(d, lines, indent)
+
+        elif kind == "branch":
+            _emit_branch(d, lines, indent, targets)
 
 
 def _emit_range_start(d: dict[str, Any], lines: list[str], indent: int) -> None:
@@ -227,6 +269,21 @@ def _emit_range_start(d: dict[str, Any], lines: list[str], indent: int) -> None:
 
     lines.append(line("RANGE", indent))
     lines.append(line(f"LVAL r{var.reg}", indent + 1))
+
+
+def _emit_iter_start(d: dict[str, Any], lines: list[str], indent: int) -> None:
+    """Emit ITER preamble: start_idx, end_idx, ITER, LIDX, LVAL."""
+    vec_ref: InputRef = d["vec_ref"]
+    idx_var: LoopVar = d["idx_var"]
+    val_var: LoopVar = d["val_var"]
+    start_expr: Expr = d["start_expr"]
+    end_expr: Expr = d["end_expr"]
+
+    start_expr.emit(lines, indent)
+    end_expr.emit(lines, indent)
+    lines.append(line(f"ITER r{vec_ref.reg}", indent))
+    lines.append(line(f"LIDX r{idx_var.reg}", indent + 1))
+    lines.append(line(f"LVAL r{val_var.reg}", indent + 1))
 
 
 def _emit_add_linear(d: dict[str, Any], lines: list[str], indent: int) -> None:
@@ -261,6 +318,109 @@ def _emit_add_quadratic(d: dict[str, Any], lines: list[str], indent: int) -> Non
 
     d["weight"].emit(lines, indent)
     lines.append(line(f"ADDQUAD r{model.reg}", indent))
+
+
+def _emit_set_linear(d: dict[str, Any], lines: list[str], indent: int) -> None:
+    """Emit SETLINE instruction with coordinate and weight."""
+    model: ModelRef = d["model"]
+
+    if model.is_2d:
+        row_expr, col_expr = resolve_coord(d["coord"])
+        emit_flat_index(row_expr, col_expr, model.cols_reg, lines, indent)
+    else:
+        coerce(d["coord"]).emit(lines, indent)
+
+    d["weight"].emit(lines, indent)
+    lines.append(line(f"SETLINE r{model.reg}", indent))
+
+
+def _emit_set_quadratic(d: dict[str, Any], lines: list[str], indent: int) -> None:
+    """Emit SETQUAD instruction with two coordinates and weight."""
+    model: ModelRef = d["model"]
+
+    if model.is_2d:
+        row_a, col_a = resolve_coord(d["coord_a"])
+        emit_flat_index(row_a, col_a, model.cols_reg, lines, indent)
+    else:
+        coerce(d["coord_a"]).emit(lines, indent)
+
+    if model.is_2d:
+        row_b, col_b = resolve_coord(d["coord_b"])
+        emit_flat_index(row_b, col_b, model.cols_reg, lines, indent)
+    else:
+        coerce(d["coord_b"]).emit(lines, indent)
+
+    d["weight"].emit(lines, indent)
+    lines.append(line(f"SETQUAD r{model.reg}", indent))
+
+
+def _emit_exclude(d: dict[str, Any], lines: list[str], indent: int) -> None:
+    """Emit EXCLUDE instruction."""
+    model: ModelRef = d["model"]
+
+    if model.is_2d:
+        row_a, col_a = resolve_coord(d["coord_a"])
+        emit_flat_index(row_a, col_a, model.cols_reg, lines, indent)
+    else:
+        coerce(d["coord_a"]).emit(lines, indent)
+
+    if model.is_2d:
+        row_b, col_b = resolve_coord(d["coord_b"])
+        emit_flat_index(row_b, col_b, model.cols_reg, lines, indent)
+    else:
+        coerce(d["coord_b"]).emit(lines, indent)
+
+    lines.append(line(f"PUSH {fmt_int(d['penalty'])}", indent))
+    lines.append(line(f"EXCLUDE r{model.reg}", indent))
+
+
+def _emit_implies(d: dict[str, Any], lines: list[str], indent: int) -> None:
+    """Emit IMPLIES instruction."""
+    model: ModelRef = d["model"]
+
+    if model.is_2d:
+        row_a, col_a = resolve_coord(d["coord_a"])
+        emit_flat_index(row_a, col_a, model.cols_reg, lines, indent)
+    else:
+        coerce(d["coord_a"]).emit(lines, indent)
+
+    if model.is_2d:
+        row_b, col_b = resolve_coord(d["coord_b"])
+        emit_flat_index(row_b, col_b, model.cols_reg, lines, indent)
+    else:
+        coerce(d["coord_b"]).emit(lines, indent)
+
+    lines.append(line(f"PUSH {fmt_int(d['penalty'])}", indent))
+    lines.append(line(f"IMPLIES r{model.reg}", indent))
+
+
+def _emit_branch(d: dict[str, Any], lines: list[str], indent: int, targets: _TargetAllocator) -> None:
+    """Emit a multi-arm branch as JUMPI/JUMP/TARGET chain."""
+    arms: list[dict[str, Any]] = d["arms"]
+    end_target = targets.alloc()
+
+    for arm in arms:
+        cond = arm["condition"]
+        arm_actions = arm["actions"]
+
+        if cond is None:
+            # Default arm — emit body directly
+            if arm_actions:
+                _emit_body_actions(arm_actions, lines, indent, targets)
+        else:
+            # Conditional arm — emit condition, skip if false
+            skip_target = targets.alloc()
+            cond.emit(lines, indent)
+            lines.append(line("NOT", indent))
+            lines.append(line(f"JUMPI .{skip_target}", indent))
+
+            if arm_actions:
+                _emit_body_actions(arm_actions, lines, indent + 1, targets)
+
+            lines.append(line(f"JUMP .{end_target}", indent + 1))
+            lines.append(line("TARGET", indent))
+
+    lines.append(line("TARGET", indent))
 
 
 # ---------------------------------------------------------------------------
@@ -482,9 +642,32 @@ def _emit_decoder_block(
             indent -= 1
             lines.append(line("NEXT", indent))
 
+        elif kind == "iter_start":
+            iter_vec_ref: InputRef = d["vec_ref"]
+            idx_var: LoopVar = d["idx_var"]
+            val_var: LoopVar = d["val_var"]
+            start_expr_i: Expr = d["start_expr"]
+            end_expr_i: Expr = d["end_expr"]
+
+            _emit_decoder_expr(start_expr_i, lines, indent, n_reg)
+            _emit_decoder_expr(end_expr_i, lines, indent, n_reg)
+            lines.append(line(f"ITER r{iter_vec_ref.reg}", indent))
+            indent += 1
+            lines.append(line(f"LIDX r{idx_var.reg}", indent))
+            lines.append(line(f"LVAL r{val_var.reg}", indent))
+
+        elif kind == "iter_end":
+            indent -= 1
+            lines.append(line("NEXT", indent))
+
         elif kind == "output_append":
             _emit_decoder_value_expr(d["value_expr"], lines, indent, sample_reg, loop_reg)
             lines.append(line(f"VECPUSH r{out_reg}", indent))
+
+        elif kind == "output_setitem":
+            _emit_decoder_expr(d["index_expr"], lines, indent, n_reg)
+            _emit_decoder_value_expr(d["value_expr"], lines, indent, sample_reg, loop_reg)
+            lines.append(line(f"VECSET r{out_reg}", indent))
 
 
 def _emit_decoder_expr(expr: Expr, lines: list[str], indent: int, n_reg: int) -> None:

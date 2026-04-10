@@ -8,7 +8,7 @@ delegates to the compiler module to emit three .xqasm programs.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
@@ -77,7 +77,6 @@ class Problem:
         self.name = name
         self._alloc = _RegisterAllocator()
         self._actions: list[Action] = []
-        self._inputs: list[InputRef] = []
         self._constraints: list[Action] = []
         self._outputs: list[OutputRef] = []
         self._output_slot = 0
@@ -105,7 +104,6 @@ class Problem:
         """Declare a runtime input. Returns a symbolic InputRef."""
         reg = self._alloc.alloc()
         ref = InputRef(reg, name, type)
-        self._inputs.append(ref)
         self._actions.append(Action("input", {"ref": ref}))
         return ref
 
@@ -117,6 +115,9 @@ class Problem:
         cols: Expr | int | None = None,
     ) -> None:
         """Declare the XQMX model the encoder will build."""
+        if domain == XQMXDomain.DISCRETE:
+            raise NotImplementedError("Discrete domain (XQMX/XSMX) is not yet supported in the CP layer")
+
         size_expr = coerce(size)
         is_2d = rows is not None and cols is not None
         cols_reg: int | None = None
@@ -170,9 +171,47 @@ class Problem:
             self._indent -= 1
             self._actions.append(Action("range_end", {}))
 
-    def stow(self, name: str, expr: Expr | int) -> RegLoad:
-        """Evaluate an expression and stow into a scratch register. Returns a RegLoad."""
-        reg = self._alloc.alloc()
+    @contextmanager
+    def iter(self, vec_input: InputRef, start: Expr | int, end: Expr | int) -> Iterator[tuple[LoopVar, LoopVar]]:
+        """Declare an ITER loop over a vec. Yields (idx_var, val_var)."""
+        idx_reg = self._alloc.alloc()
+        val_reg = self._alloc.alloc()
+        start_expr = coerce(start)
+        end_expr = coerce(end)
+        idx_var = LoopVar(idx_reg, f"idx{idx_reg}")
+        val_var = LoopVar(val_reg, f"val{val_reg}")
+
+        self._actions.append(
+            Action(
+                "iter_start",
+                {
+                    "vec_ref": vec_input,
+                    "idx_var": idx_var,
+                    "val_var": val_var,
+                    "start_expr": start_expr,
+                    "end_expr": end_expr,
+                },
+            )
+        )
+        self._indent += 1
+        try:
+            yield (idx_var, val_var)
+        finally:
+            self._indent -= 1
+            self._actions.append(Action("iter_end", {}))
+
+    def stow(self, target: str | RegLoad, expr: Expr | int) -> RegLoad:
+        """Evaluate an expression and stow into a register.
+
+        If target is a string, allocates a new register.
+        If target is a RegLoad, reuses the existing register.
+        """
+        if isinstance(target, RegLoad):
+            reg = target.reg
+            name = f"r{reg}"
+        else:
+            reg = self._alloc.alloc()
+            name = target
         self._actions.append(
             Action(
                 "stow",
@@ -184,6 +223,47 @@ class Problem:
             )
         )
         return RegLoad(reg)
+
+    def branch(self, *args: Any) -> None:
+        """Multi-arm conditional branch.
+
+        Args: (cond1, callable1, cond2, callable2, ..., default_callable_or_None)
+        - Variadic (condition, callable) pairs
+        - Final arg is the mandatory default (callable or None)
+        - Minimum 3 args: (cond, callable, default)
+        - First-match semantics
+        """
+        if len(args) < 3:
+            raise ValueError("branch() requires at least 3 arguments: (cond, callable, default)")
+        if len(args) % 2 == 0:
+            raise ValueError("branch() requires odd number of arguments: (cond, callable, ..., default)")
+
+        arms: list[dict[str, Any]] = []
+
+        # Parse (condition, callable) pairs
+        for i in range(0, len(args) - 1, 2):
+            cond = coerce(args[i])
+            body_fn: Callable[[], Any] | None = args[i + 1]
+            body_actions = self._capture_actions(body_fn)
+            arms.append({"condition": cond, "actions": body_actions})
+
+        # Parse default arm
+        default_fn: Callable[[], Any] | None = args[-1]
+        default_actions = self._capture_actions(default_fn)
+        arms.append({"condition": None, "actions": default_actions})
+
+        self._actions.append(Action("branch", {"arms": arms}))
+
+    def _capture_actions(self, fn: Callable[[], Any] | None) -> list[Action]:
+        """Call fn while capturing any actions it records into a separate buffer."""
+        if fn is None:
+            return []
+        saved = self._actions
+        self._actions = []
+        fn()
+        captured = self._actions
+        self._actions = saved
+        return captured
 
     def output(self, name: str, type: Types) -> OutputRef:
         """Declare a pipeline output. Returns a symbolic OutputRef."""
@@ -233,6 +313,42 @@ class Problem:
             )
         )
 
+    def _record_set_linear(
+        self,
+        model: ModelRef,
+        coord: Any,
+        weight: Expr | int,
+    ) -> None:
+        self._actions.append(
+            Action(
+                "set_linear",
+                {
+                    "model": model,
+                    "coord": coord,
+                    "weight": coerce(weight),
+                },
+            )
+        )
+
+    def _record_set_quadratic(
+        self,
+        model: ModelRef,
+        coord_a: Any,
+        coord_b: Any,
+        weight: Expr | int,
+    ) -> None:
+        self._actions.append(
+            Action(
+                "set_quadratic",
+                {
+                    "model": model,
+                    "coord_a": coord_a,
+                    "coord_b": coord_b,
+                    "weight": coerce(weight),
+                },
+            )
+        )
+
     def _record_onehot_row(
         self,
         model: ModelRef,
@@ -267,6 +383,44 @@ class Problem:
         self._actions.append(action)
         self._constraints.append(action)
 
+    def _record_exclude(
+        self,
+        model: ModelRef,
+        coord_a: Any,
+        coord_b: Any,
+        penalty: int,
+    ) -> None:
+        action = Action(
+            "exclude",
+            {
+                "model": model,
+                "coord_a": coord_a,
+                "coord_b": coord_b,
+                "penalty": penalty,
+            },
+        )
+        self._actions.append(action)
+        self._constraints.append(action)
+
+    def _record_implies(
+        self,
+        model: ModelRef,
+        coord_a: Any,
+        coord_b: Any,
+        penalty: int,
+    ) -> None:
+        action = Action(
+            "implies",
+            {
+                "model": model,
+                "coord_a": coord_a,
+                "coord_b": coord_b,
+                "penalty": penalty,
+            },
+        )
+        self._actions.append(action)
+        self._constraints.append(action)
+
     def _record_output_append(self, output: OutputRef, value_expr: Expr | int) -> None:
         self._actions.append(
             Action(
@@ -274,6 +428,18 @@ class Problem:
                 {
                     "output": output,
                     "value_expr": coerce(value_expr),
+                },
+            )
+        )
+
+    def _record_output_setitem(self, output: OutputRef, index: Expr | int, value: Expr | int) -> None:
+        self._actions.append(
+            Action(
+                "output_setitem",
+                {
+                    "output": output,
+                    "index_expr": coerce(index),
+                    "value_expr": coerce(value),
                 },
             )
         )

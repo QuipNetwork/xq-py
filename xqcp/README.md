@@ -27,7 +27,7 @@ programs = problem.compile()
 
 XQCP uses a **record-then-compile** pattern:
 
-1. **Record** — DSL calls (`input`, `define_model`, `range`, `stow`, `model.add_linear`, etc.) append `Action` objects to an ordered list.
+1. **Record** — DSL calls (`input`, `define_model`, `range`, `stow`, `model.linear[i].add(w)`, etc.) append `Action` objects to an ordered list.
 2. **Compile** — The compiler walks the action list and emits assembly for each of the three programs, with automatic register allocation and loop nesting.
 
 ### Module Structure
@@ -36,9 +36,9 @@ XQCP uses a **record-then-compile** pattern:
 |--------|---------|
 | `problem.py` | `Problem` container, action recording, register allocator |
 | `expression.py` | Symbolic expression tree nodes that emit assembly |
-| `symbols.py` | Symbolic references: `InputRef`, `LoopVar`, `ModelRef`, `SampleRef`, `OutputRef` |
+| `symbols.py` | Symbolic references: `InputRef`, `LoopVar`, `ModelRef`, `SampleRef`, `OutputRef`, `CoefficientRef`, `LinearProxy`, `QuadraticProxy` |
 | `compiler.py` | Three compiler functions: `compile_encoder`, `compile_verifier`, `compile_decoder` |
-| `__init__.py` | Public API re-exports and `triu()` helper |
+| `__init__.py` | Public API re-exports and `xq_*` helper functions |
 
 ## DSL Reference
 
@@ -73,24 +73,47 @@ problem.define_model(
 )
 ```
 
-Model operations:
+> **Note:** Discrete domain (`XQMXDomain.DISCRETE`) is not yet supported in the CP layer.
+
+### Model Coefficients
+
+Access linear and quadratic coefficients via subscript proxies:
 
 ```python
-# 1D coordinates (flat index)
-problem.model.add_linear(i, weight)
-problem.model.add_quadratic(i, j, weight)
+# Linear coefficients
+model.linear[i]              # get (returns Expr → GETLINE)
+model.linear[i] = weight     # set (→ SETLINE)
+model.linear[i].add(weight)  # add (→ ADDLINE)
 
-# 2D coordinates (row, col tuples)
-problem.model.add_quadratic((row_a, col_a), (row_b, col_b), weight)
+# Quadratic coefficients
+model.quadratic[i, j]              # get (returns Expr → GETQUAD)
+model.quadratic[i, j] = weight     # set (→ SETQUAD)
+model.quadratic[i, j].add(weight)  # add (→ ADDQUAD)
 
-# Constraints (2D models only)
-problem.model.apply_onehot_row(row, penalty=100)
-problem.model.apply_onehot_col(col, penalty=100)
+# 2D models accept tuple coordinates (auto-flattened via IDXGRID)
+model.quadratic[(row_a, col_a), (row_b, col_b)].add(weight)
+```
+
+### Constraints
+
+```python
+# One-hot constraints (2D models)
+model.apply_onehot_row(row, penalty=100)    # → ONEHOTR
+model.apply_onehot_col(col, penalty=100)    # → ONEHOTC
+
+# Mutual exclusion (variables i and j cannot both be 1)
+model.apply_exclude(i, j, penalty=100)      # → EXCLUDE
+
+# Implication (if variable i is 1, variable j must be 1)
+model.apply_implies(i, j, penalty=100)      # → IMPLIES
+
+# 2D models accept tuple coordinates for exclude/implies
+model.apply_exclude((r1, c1), (r2, c2), penalty=100)
 ```
 
 ### Loops
 
-`problem.range(start, end)` emits a `RANGE` loop. Use as a context manager:
+`problem.range(start, end)` emits a `RANGE` loop:
 
 ```python
 with problem.range(0, n) as i:
@@ -98,18 +121,50 @@ with problem.range(0, n) as i:
         # body executes for all (i, j) pairs where i < j
 ```
 
-The yielded `LoopVar` supports full arithmetic and can be used as indices, coordinates, or operands.
+`problem.iter(vec, start, end)` emits an `ITER` loop over vec elements:
+
+```python
+# Always yields (idx, val) — unpack as needed
+with problem.iter(distances, 0, n) as (idx, val):
+    model.linear[idx].add(val)
+
+with problem.iter(distances, 0, n) as (_, val):
+    # discard index, use value only
+```
+
+The yielded `LoopVar`s support full arithmetic and can be used as indices, coordinates, or operands.
 
 ### Stow
 
 Evaluate an expression and store it in a register for reuse:
 
 ```python
-dist = problem.stow("dist", edges.get(triu(i, j)))
+dist = problem.stow("dist", edges.get(xq_triu(i, j)))
 w = problem.stow("w", edges.get(offset + 2))
 ```
 
-Returns a `RegLoad` that can be used in subsequent expressions without re-emitting the computation.
+Returns a `RegLoad` that can be used in subsequent expressions. Pass an existing `RegLoad` to overwrite:
+
+```python
+weight = problem.stow("weight", 0)       # allocate new register
+problem.stow(weight, dist * 10)           # overwrite same register
+```
+
+### Branch
+
+Conditional multi-arm branching with first-match semantics:
+
+```python
+problem.branch(
+    dist > threshold, lambda: model.linear[i].add(dist * 10),  # if
+    dist > 0,         lambda: model.linear[i].add(dist),       # elif
+    None,                                                       # else (do nothing)
+)
+```
+
+- Variadic `(condition, callable)` pairs followed by a mandatory default (callable or `None`)
+- Minimum 3 arguments: `(cond, callable, default)`
+- Conditions use comparison operators (`>`, `<`, `==`, `>=`, `<=`)
 
 ### Outputs
 
@@ -119,9 +174,13 @@ Declare decoder outputs:
 tour = problem.output("tour", type=Types.Vec)
 
 with problem.range(0, n) as pos:
-    tour.append(problem.sample.colfind(col=pos, value=1))   # 2D grid decoder
+    tour.append(problem.sample.colfind(col=pos, value=1))   # VECPUSH
     # or
-    tour.append(problem.sample.getline(pos))                 # 1D flat decoder
+    tour.append(problem.sample.getline(pos))                 # VECPUSH
+
+# Random-access write/read
+tour[i] = value    # VECSET
+val = tour[i]      # VECGET
 ```
 
 ### Sample
@@ -130,29 +189,82 @@ with problem.range(0, n) as pos:
 
 ```python
 problem.sample.colfind(col=pos, value=1)   # find row where column has value (2D)
+problem.sample.rowfind(row=pos, value=1)   # find col where row has value (2D)
 problem.sample.getline(index)               # read variable by index (1D)
+problem.sample.rowsum(row)                  # sum all values in row
+problem.sample.colsum(col)                  # sum all values in column
 ```
 
-### Arithmetic
+### Operators
 
 All symbolic types (`InputRef`, `LoopVar`, `RegLoad`, `Literal`) support:
 
+#### Arithmetic
+
 | Operator | Assembly | Notes |
 |----------|----------|-------|
-| `a + b` | `ADD` | |
-| `a - b` | `SUB` | |
+| `a + b` | `ADD` | Optimizes to `INC` when adding 1 |
+| `a - b` | `SUB` | Optimizes to `DEC` when subtracting 1 |
 | `a * b` | `MUL` | |
 | `a // b` | `DIV` | Integer division |
 | `a % b` | `MOD` | |
 | `-a` | `NEG` | Unary negation |
 
-### Helpers
+#### Comparison
+
+| Operator | Assembly |
+|----------|----------|
+| `a == b` | `EQ` |
+| `a < b` | `LT` |
+| `a > b` | `GT` |
+| `a <= b` | `LTE` |
+| `a >= b` | `GTE` |
+
+#### Bitwise
+
+| Operator | Assembly |
+|----------|----------|
+| `a & b` | `BAND` |
+| `a \| b` | `BOR` |
+| `a ^ b` | `BXOR` |
+| `~a` | `BNOT` |
+| `a << b` | `SHL` |
+| `a >> b` | `SHR` |
+
+### Free Functions
 
 ```python
-from xqcp import triu
-
-idx = triu(i, j)    # upper triangular index, compiles to IDXTRIU
+from xqcp import (
+    xq_triu, xq_grid, xq_sqr, xq_abs, xq_min, xq_max,
+    xq_not, xq_and, xq_or, xq_xor, xq_bnot,
+)
 ```
+
+#### Index Math
+
+| Function | Assembly | Description |
+|----------|----------|-------------|
+| `xq_triu(i, j)` | `IDXTRIU` | Upper triangular index |
+| `xq_grid(row, col, cols)` | `IDXGRID` | Grid flat index (row * cols + col) |
+
+#### Arithmetic
+
+| Function | Assembly | Description |
+|----------|----------|-------------|
+| `xq_sqr(x)` | `SQR` | Square |
+| `xq_abs(x)` | `ABS` | Absolute value |
+| `xq_min(a, b)` | `MIN` | Minimum |
+| `xq_max(a, b)` | `MAX` | Maximum |
+
+#### Logical (Python keywords `and`/`or`/`not` can't be overloaded)
+
+| Function | Assembly | Description |
+|----------|----------|-------------|
+| `xq_not(x)` | `NOT` | Logical NOT |
+| `xq_and(a, b)` | `AND` | Logical AND |
+| `xq_or(a, b)` | `OR` | Logical OR |
+| `xq_xor(a, b)` | `XOR` | Logical XOR |
+| `xq_bnot(x)` | `BNOT` | Bitwise NOT |
 
 ## Compiled Output
 

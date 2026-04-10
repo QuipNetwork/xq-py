@@ -30,7 +30,7 @@ Programs share no state. Communication happens only through input (calldata) and
 ### Installation
 
 ```sh
-git clone <repo-url> && cd xqvm-py
+git clone <repo-url> && cd xq-py
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt

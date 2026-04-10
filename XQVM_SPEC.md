@@ -208,6 +208,16 @@ Operate on raw integer bit patterns.
 | `0x3E` | `SHL` | `[..., a, b] → [..., a << b]` | Left shift. |
 | `0x3F` | `SHR` | `[..., a, b] → [..., a >> b]` | Right shift (arithmetic, sign-extending). |
 
+> **Design note — shift opcodes.**
+> `SHR` is arithmetic (sign-extending), not logical (zero-filling).
+> Because the VM's type system is entirely signed integers, arithmetic
+> right shift is the natural default — it preserves sign and is equivalent
+> to integer division by 2^b. A separate logical right shift opcode is
+> intentionally omitted: there is no unsigned integer type, no fixed bit
+> width to zero-fill from, and no current workload that requires unsigned
+> bit-pattern manipulation. Where logical right shift semantics are
+> needed, they can be emulated with a mask (`BAND`) followed by `SHR`.
+
 ---
 
 ### Allocators

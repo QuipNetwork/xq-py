@@ -112,92 +112,92 @@ class TestLinearCoefficients:
     """Tests for linear coefficient operations."""
 
     def test_get_linear_default(self, binary_model):
-        """get_linear returns 0.0 for unset index."""
-        assert binary_model.get_linear(0) == 0.0
-        assert binary_model.get_linear(5) == 0.0
+        """get_linear returns 0 for unset index."""
+        assert binary_model.get_linear(0) == 0
+        assert binary_model.get_linear(5) == 0
 
     def test_set_linear(self, binary_model):
         """set_linear stores coefficient."""
-        binary_model.set_linear(3, 2.5)
-        assert binary_model.get_linear(3) == 2.5
+        binary_model.set_linear(3, 5)
+        assert binary_model.get_linear(3) == 5
 
     def test_set_linear_zero_removes(self, binary_model):
         """set_linear with 0 removes key (sparse)."""
-        binary_model.set_linear(0, 5.0)
-        binary_model.set_linear(0, 0.0)
+        binary_model.set_linear(0, 5)
+        binary_model.set_linear(0, 0)
         assert 0 not in binary_model.linear
 
     def test_add_linear(self, binary_model):
         """add_linear adds to existing coefficient."""
-        binary_model.set_linear(0, 1.0)
-        binary_model.add_linear(0, 0.5)
-        assert binary_model.get_linear(0) == 1.5
+        binary_model.set_linear(0, 1)
+        binary_model.add_linear(0, 2)
+        assert binary_model.get_linear(0) == 3
 
     def test_add_linear_to_unset(self, binary_model):
         """add_linear to unset index creates it."""
-        binary_model.add_linear(5, 3.0)
-        assert binary_model.get_linear(5) == 3.0
+        binary_model.add_linear(5, 3)
+        assert binary_model.get_linear(5) == 3
 
     def test_linear_index_bounds(self, binary_model):
         """Out of bounds index raises IndexError."""
         with pytest.raises(IndexError):
-            binary_model.set_linear(100, 1.0)
+            binary_model.set_linear(100, 1)
 
     def test_linear_negative_index(self, binary_model):
         """Negative index raises IndexError."""
         with pytest.raises(IndexError):
-            binary_model.set_linear(-1, 1.0)
+            binary_model.set_linear(-1, 1)
 
 
 class TestQuadraticCoefficients:
     """Tests for quadratic coefficient operations."""
 
     def test_get_quadratic_default(self, binary_model):
-        """get_quadratic returns 0.0 for unset pair."""
-        assert binary_model.get_quadratic(0, 1) == 0.0
+        """get_quadratic returns 0 for unset pair."""
+        assert binary_model.get_quadratic(0, 1) == 0
 
     def test_set_quadratic(self, binary_model):
         """set_quadratic stores coefficient."""
-        binary_model.set_quadratic(0, 1, 3.5)
-        assert binary_model.get_quadratic(0, 1) == 3.5
+        binary_model.set_quadratic(0, 1, 7)
+        assert binary_model.get_quadratic(0, 1) == 7
 
     def test_quadratic_index_normalization(self, binary_model):
         """Indices are normalized so i < j."""
-        binary_model.set_quadratic(5, 2, 4.0)
+        binary_model.set_quadratic(5, 2, 4)
         # Should be stored as (2, 5)
-        assert binary_model.get_quadratic(2, 5) == 4.0
-        assert binary_model.get_quadratic(5, 2) == 4.0
+        assert binary_model.get_quadratic(2, 5) == 4
+        assert binary_model.get_quadratic(5, 2) == 4
 
     def test_set_quadratic_zero_removes(self, binary_model):
         """set_quadratic with 0 removes key (sparse)."""
-        binary_model.set_quadratic(0, 1, 5.0)
-        binary_model.set_quadratic(0, 1, 0.0)
+        binary_model.set_quadratic(0, 1, 5)
+        binary_model.set_quadratic(0, 1, 0)
         assert (0, 1) not in binary_model.quadratic
 
     def test_add_quadratic(self, binary_model):
         """add_quadratic adds to existing coefficient."""
-        binary_model.set_quadratic(0, 1, 1.0)
-        binary_model.add_quadratic(0, 1, 0.5)
-        assert binary_model.get_quadratic(0, 1) == 1.5
+        binary_model.set_quadratic(0, 1, 1)
+        binary_model.add_quadratic(0, 1, 2)
+        assert binary_model.get_quadratic(0, 1) == 3
 
     def test_add_quadratic_to_unset(self, binary_model):
         """add_quadratic to unset pair creates it."""
-        binary_model.add_quadratic(3, 4, 2.0)
-        assert binary_model.get_quadratic(3, 4) == 2.0
+        binary_model.add_quadratic(3, 4, 2)
+        assert binary_model.get_quadratic(3, 4) == 2
 
     def test_quadratic_index_bounds(self, binary_model):
         """Out of bounds indices raise IndexError."""
         with pytest.raises(IndexError):
-            binary_model.set_quadratic(0, 100, 1.0)
+            binary_model.set_quadratic(0, 100, 1)
 
     def test_quadratic_same_index_allowed(self, binary_model):
         """Same index (i == j) may be allowed depending on implementation."""
         # Some implementations allow self-couplings, some don't
         # Test whatever the actual behavior is
         try:
-            binary_model.set_quadratic(0, 0, 1.0)
+            binary_model.set_quadratic(0, 0, 1)
             # If it doesn't raise, check it stored correctly
-            assert binary_model.get_quadratic(0, 0) == 1.0
+            assert binary_model.get_quadratic(0, 0) == 1
         except (IndexError, ValueError):
             # If it raises, that's also valid behavior
             pass
@@ -232,21 +232,21 @@ class TestGridOperations:
 
     def test_row_sum(self, grid_model):
         """row_sum sums linear values in row."""
-        grid_model.set_linear(0, 1.0)
-        grid_model.set_linear(1, 2.0)
-        grid_model.set_linear(2, 3.0)
+        grid_model.set_linear(0, 1)
+        grid_model.set_linear(1, 2)
+        grid_model.set_linear(2, 3)
 
-        assert row_sum(grid_model, 0) == 6.0
-        assert row_sum(grid_model, 1) == 0.0  # No values set
+        assert row_sum(grid_model, 0) == 6
+        assert row_sum(grid_model, 1) == 0  # No values set
 
     def test_col_sum(self, grid_model):
         """col_sum sums linear values in column."""
-        grid_model.set_linear(0, 1.0)
-        grid_model.set_linear(5, 2.0)
-        grid_model.set_linear(10, 3.0)
+        grid_model.set_linear(0, 1)
+        grid_model.set_linear(5, 2)
+        grid_model.set_linear(10, 3)
 
-        assert col_sum(grid_model, 0) == 6.0
-        assert col_sum(grid_model, 1) == 0.0
+        assert col_sum(grid_model, 0) == 6
+        assert col_sum(grid_model, 1) == 0
 
     def test_row_find(self, grid_model):
         """row_find finds first column with value."""
@@ -289,7 +289,7 @@ class TestHLFExpandOnehot:
     def test_expand_onehot_linear_terms(self):
         """expand_onehot adds linear terms."""
         model = XQMX.binary_model(size=5)
-        expand_onehot(model, [0, 1, 2], penalty=1.0)
+        expand_onehot(model, [0, 1, 2], penalty=1)
 
         # Linear terms should be set
         assert model.get_linear(0) != 0
@@ -299,7 +299,7 @@ class TestHLFExpandOnehot:
     def test_expand_onehot_quadratic_terms(self):
         """expand_onehot adds quadratic terms."""
         model = XQMX.binary_model(size=5)
-        expand_onehot(model, [0, 1, 2], penalty=1.0)
+        expand_onehot(model, [0, 1, 2], penalty=1)
 
         # Quadratic terms for all pairs
         assert model.get_quadratic(0, 1) != 0
@@ -310,7 +310,7 @@ class TestHLFExpandOnehot:
         """expand_onehot requires MODEL mode."""
         sample = XQMX.binary_sample(size=5)
         with pytest.raises(XQMXModeError):
-            expand_onehot(sample, [0, 1], penalty=1.0)
+            expand_onehot(sample, [0, 1], penalty=1)
 
 
 class TestHLFExpandExclude:
@@ -319,15 +319,15 @@ class TestHLFExpandExclude:
     def test_expand_exclude_quadratic(self):
         """expand_exclude adds quadratic term."""
         model = XQMX.binary_model(size=5)
-        expand_exclude(model, 0, 1, penalty=2.0)
+        expand_exclude(model, 0, 1, penalty=2)
 
-        assert model.get_quadratic(0, 1) == 2.0
+        assert model.get_quadratic(0, 1) == 2
 
     def test_expand_exclude_requires_model(self):
         """expand_exclude requires MODEL mode."""
         sample = XQMX.binary_sample(size=5)
         with pytest.raises(XQMXModeError):
-            expand_exclude(sample, 0, 1, penalty=1.0)
+            expand_exclude(sample, 0, 1, penalty=1)
 
 
 class TestHLFExpandImplies:
@@ -336,7 +336,7 @@ class TestHLFExpandImplies:
     def test_expand_implies_linear_and_quadratic(self):
         """expand_implies adds linear and quadratic terms."""
         model = XQMX.binary_model(size=5)
-        expand_implies(model, 0, 1, penalty=1.0)
+        expand_implies(model, 0, 1, penalty=1)
 
         # Should set both linear and quadratic
         assert model.get_linear(0) != 0 or model.get_quadratic(0, 1) != 0
@@ -345,7 +345,7 @@ class TestHLFExpandImplies:
         """expand_implies requires MODEL mode."""
         sample = XQMX.binary_sample(size=5)
         with pytest.raises(XQMXModeError):
-            expand_implies(sample, 0, 1, penalty=1.0)
+            expand_implies(sample, 0, 1, penalty=1)
 
 
 class TestComputeEnergy:
@@ -354,9 +354,9 @@ class TestComputeEnergy:
     def test_energy_linear_only(self):
         """Energy from linear terms only."""
         model = XQMX.binary_model(size=3)
-        model.set_linear(0, 1.0)
-        model.set_linear(1, 2.0)
-        model.set_linear(2, 3.0)
+        model.set_linear(0, 1)
+        model.set_linear(1, 2)
+        model.set_linear(2, 3)
 
         sample = XQMX.binary_sample(size=3)
         sample.set_linear(0, 1)  # x0 = 1
@@ -364,13 +364,13 @@ class TestComputeEnergy:
         sample.set_linear(2, 0)  # x2 = 0
 
         energy = compute_energy(model, sample)
-        # Energy = 1.0*1 + 2.0*1 + 3.0*0 = 3.0
-        assert energy == 3.0
+        # Energy = 1*1 + 2*1 + 3*0 = 3
+        assert energy == 3
 
     def test_energy_quadratic_only(self):
         """Energy from quadratic terms only."""
         model = XQMX.binary_model(size=3)
-        model.set_quadratic(0, 1, 2.0)
+        model.set_quadratic(0, 1, 2)
 
         sample = XQMX.binary_sample(size=3)
         sample.set_linear(0, 1)
@@ -378,23 +378,23 @@ class TestComputeEnergy:
         sample.set_linear(2, 0)
 
         energy = compute_energy(model, sample)
-        # Energy = 2.0 * 1 * 1 = 2.0
-        assert energy == 2.0
+        # Energy = 2 * 1 * 1 = 2
+        assert energy == 2
 
     def test_energy_combined(self):
         """Energy from both linear and quadratic terms."""
         model = XQMX.binary_model(size=2)
-        model.set_linear(0, 1.0)
-        model.set_linear(1, 2.0)
-        model.set_quadratic(0, 1, 3.0)
+        model.set_linear(0, 1)
+        model.set_linear(1, 2)
+        model.set_quadratic(0, 1, 3)
 
         sample = XQMX.binary_sample(size=2)
         sample.set_linear(0, 1)
         sample.set_linear(1, 1)
 
         energy = compute_energy(model, sample)
-        # Energy = 1.0*1 + 2.0*1 + 3.0*1*1 = 6.0
-        assert energy == 6.0
+        # Energy = 1*1 + 2*1 + 3*1*1 = 6
+        assert energy == 6
 
     def test_energy_size_mismatch_raises(self):
         """Size mismatch raises ValueError."""
@@ -409,7 +409,7 @@ class TestComputeEnergy:
         model = XQMX.binary_model(size=5)
         sample = XQMX.binary_sample(size=5)
 
-        assert compute_energy(model, sample) == 0.0
+        assert compute_energy(model, sample) == 0
 
 
 class TestRequireModeValidators:

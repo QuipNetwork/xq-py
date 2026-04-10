@@ -1609,7 +1609,7 @@ class TestXQMXHighLevel:
             ]
         )
         x = ex.state.get_register(0)
-        assert x.get_quadratic(0, 1) == 2.0
+        assert x.get_quadratic(0, 1) == 2
 
     def test_implies(self):
         """IMPLIES adds implication constraint."""

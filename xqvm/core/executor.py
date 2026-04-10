@@ -665,21 +665,21 @@ class Executor:
         xqmx = self._get_register_as_xqmx(reg)
         index = self.state.pop()
         value = xqmx.get_linear(index)
-        self.state.push(int(value))
+        self.state.push(value)
 
     def _runner_SETLINE(self, instr: Instruction) -> None:
         """SETLINE: Set linear coefficient."""
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         value, index = self.state.pop_n(2)
-        xqmx.set_linear(index, float(value))
+        xqmx.set_linear(index, value)
 
     def _runner_ADDLINE(self, instr: Instruction) -> None:
         """ADDLINE: Add to linear coefficient."""
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         delta, index = self.state.pop_n(2)
-        xqmx.add_linear(index, float(delta))
+        xqmx.add_linear(index, delta)
 
     def _runner_GETQUAD(self, instr: Instruction) -> None:
         """GETQUAD: Get quadratic coefficient."""
@@ -687,21 +687,21 @@ class Executor:
         xqmx = self._get_register_as_xqmx(reg)
         j, i = self.state.pop_n(2)
         value = xqmx.get_quadratic(i, j)
-        self.state.push(int(value))
+        self.state.push(value)
 
     def _runner_SETQUAD(self, instr: Instruction) -> None:
         """SETQUAD: Set quadratic coefficient."""
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         value, j, i = self.state.pop_n(3)
-        xqmx.set_quadratic(i, j, float(value))
+        xqmx.set_quadratic(i, j, value)
 
     def _runner_ADDQUAD(self, instr: Instruction) -> None:
         """ADDQUAD: Add to quadratic coefficient."""
         reg = instr.operands[0]
         xqmx = self._get_register_as_xqmx(reg)
         delta, j, i = self.state.pop_n(3)
-        xqmx.add_quadratic(i, j, float(delta))
+        xqmx.add_quadratic(i, j, delta)
 
     def _runner_IDXGRID(self, instr: Instruction) -> None:
         """IDXGRID: Convert (row, col) to flat index using cols."""
@@ -748,7 +748,7 @@ class Executor:
         xqmx = self._get_register_as_xqmx(reg)
         row = self.state.pop()
         total = xqmx_row_sum(xqmx, row)
-        self.state.push(int(total))
+        self.state.push(total)
 
     def _runner_COLSUM(self, instr: Instruction) -> None:
         """COLSUM: Sum all values in column."""
@@ -756,7 +756,7 @@ class Executor:
         xqmx = self._get_register_as_xqmx(reg)
         col = self.state.pop()
         total = xqmx_col_sum(xqmx, col)
-        self.state.push(int(total))
+        self.state.push(total)
 
     def _runner_ONEHOTR(self, instr: Instruction) -> None:
         """ONEHOTR: Add one-hot constraint for row."""
@@ -768,7 +768,7 @@ class Executor:
             raise ValueError("ONEHOTR requires grid dimensions to be set")
 
         indices = row_indices(model, row)
-        expand_onehot(model, indices, float(penalty))
+        expand_onehot(model, indices, penalty)
 
     def _runner_ONEHOTC(self, instr: Instruction) -> None:
         """ONEHOTC: Add one-hot constraint for column."""
@@ -780,21 +780,21 @@ class Executor:
             raise ValueError("ONEHOTC requires grid dimensions to be set")
 
         indices = col_indices(model, col)
-        expand_onehot(model, indices, float(penalty))
+        expand_onehot(model, indices, penalty)
 
     def _runner_EXCLUDE(self, instr: Instruction) -> None:
         """EXCLUDE: Add exclusion constraint with penalty."""
         reg = instr.operands[0]
         model = self._get_register_as_xqmx(reg)
         penalty, j, i = self.state.pop_n(3)
-        expand_exclude(model, i, j, float(penalty))
+        expand_exclude(model, i, j, penalty)
 
     def _runner_IMPLIES(self, instr: Instruction) -> None:
         """IMPLIES: Add implication constraint with penalty."""
         reg = instr.operands[0]
         model = self._get_register_as_xqmx(reg)
         penalty, j, i = self.state.pop_n(3)
-        expand_implies(model, i, j, float(penalty))
+        expand_implies(model, i, j, penalty)
 
     def _runner_ENERGY(self, instr: Instruction) -> None:
         """ENERGY: Compute energy of sample against model."""
@@ -803,4 +803,4 @@ class Executor:
         model = self._get_register_as_xqmx(model_reg)
         sample = self._get_register_as_xqmx(sample_reg)
         energy = compute_energy(model, sample)
-        self.state.push(int(energy))
+        self.state.push(energy)

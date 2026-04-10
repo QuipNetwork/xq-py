@@ -95,6 +95,6 @@ class NealBackend(Backend):
             sample = XQMX.spin_sample(model.size, model.rows, model.cols)
 
         for var_idx, value in raw_sample.items():
-            sample.set_linear(var_idx, float(value))
+            sample.set_linear(var_idx, int(value))
 
         return sample

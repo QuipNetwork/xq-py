@@ -51,8 +51,8 @@ class XQMX:
     size: int  # Total number of variables
     rows: int = 0  # Grid rows (0 if not grid-indexed)
     cols: int = 0  # Grid cols (0 if not grid-indexed)
-    linear: dict[int, float] = field(default_factory=dict)
-    quadratic: dict[tuple[int, int], float] = field(default_factory=dict)
+    linear: dict[int, int] = field(default_factory=dict)
+    quadratic: dict[tuple[int, int], int] = field(default_factory=dict)
     discrete_k: int = 2  # For DISCRETE domain: number of values [0..k-1]
 
     def __post_init__(self) -> None:
@@ -139,40 +139,40 @@ class XQMX:
         """Check if this is a sample (vs model)."""
         return self.mode == XQMXMode.SAMPLE
 
-    def get_linear(self, i: int) -> float:
+    def get_linear(self, i: int) -> int:
         """Get linear coefficient/value for variable i."""
-        return self.linear.get(i, 0.0)
+        return self.linear.get(i, 0)
 
-    def set_linear(self, i: int, value: float) -> None:
+    def set_linear(self, i: int, value: int) -> None:
         """Set linear coefficient/value for variable i."""
         if i < 0 or i >= self.size:
             raise IndexError(f"Variable index {i} out of range [0, {self.size})")
 
-        if value == 0.0:
+        if value == 0:
             self.linear.pop(i, None)
         else:
             self.linear[i] = value
 
-    def add_linear(self, i: int, delta: float) -> None:
+    def add_linear(self, i: int, delta: int) -> None:
         """Add to linear coefficient for variable i."""
         if i < 0 or i >= self.size:
             raise IndexError(f"Variable index {i} out of range [0, {self.size})")
 
-        current = self.linear.get(i, 0.0)
+        current = self.linear.get(i, 0)
         new_value = current + delta
 
-        if new_value == 0.0:
+        if new_value == 0:
             self.linear.pop(i, None)
         else:
             self.linear[i] = new_value
 
-    def get_quadratic(self, i: int, j: int) -> float:
+    def get_quadratic(self, i: int, j: int) -> int:
         """Get quadratic coefficient for variables i, j."""
         if i > j:
             i, j = j, i
-        return self.quadratic.get((i, j), 0.0)
+        return self.quadratic.get((i, j), 0)
 
-    def set_quadratic(self, i: int, j: int, value: float) -> None:
+    def set_quadratic(self, i: int, j: int, value: int) -> None:
         """Set quadratic coefficient for variables i, j."""
         if i < 0 or i >= self.size or j < 0 or j >= self.size:
             raise IndexError(f"Variable indices ({i}, {j}) out of range [0, {self.size})")
@@ -180,12 +180,12 @@ class XQMX:
         if i > j:
             i, j = j, i
 
-        if value == 0.0:
+        if value == 0:
             self.quadratic.pop((i, j), None)
         else:
             self.quadratic[(i, j)] = value
 
-    def add_quadratic(self, i: int, j: int, delta: float) -> None:
+    def add_quadratic(self, i: int, j: int, delta: int) -> None:
         """Add to quadratic coefficient for variables i, j."""
         if i < 0 or i >= self.size or j < 0 or j >= self.size:
             raise IndexError(f"Variable indices ({i}, {j}) out of range [0, {self.size})")
@@ -193,10 +193,10 @@ class XQMX:
         if i > j:
             i, j = j, i
 
-        current = self.quadratic.get((i, j), 0.0)
+        current = self.quadratic.get((i, j), 0)
         new_value = current + delta
 
-        if new_value == 0.0:
+        if new_value == 0:
             self.quadratic.pop((i, j), None)
         else:
             self.quadratic[(i, j)] = new_value
@@ -252,7 +252,7 @@ def col_indices(xqmx: XQMX, col: int) -> list[int]:
     return [col + r * xqmx.cols for r in range(xqmx.rows)]
 
 
-def row_sum(xqmx: XQMX, row: int) -> float:
+def row_sum(xqmx: XQMX, row: int) -> int:
     """
     Sum all linear values in a given row.
 
@@ -262,7 +262,7 @@ def row_sum(xqmx: XQMX, row: int) -> float:
     return sum(xqmx.get_linear(i) for i in indices)
 
 
-def col_sum(xqmx: XQMX, col: int) -> float:
+def col_sum(xqmx: XQMX, col: int) -> int:
     """
     Sum all linear values in a given column.
 
@@ -283,7 +283,7 @@ def row_find(xqmx: XQMX, row: int, value: int) -> int:
         return -1
     indices = row_indices(xqmx, row)
     for col, idx in enumerate(indices):
-        if xqmx.get_linear(idx) == float(value):
+        if xqmx.get_linear(idx) == value:
             return col
     return -1
 
@@ -299,7 +299,7 @@ def col_find(xqmx: XQMX, col: int, value: int) -> int:
         return -1
     indices = col_indices(xqmx, col)
     for row, idx in enumerate(indices):
-        if xqmx.get_linear(idx) == float(value):
+        if xqmx.get_linear(idx) == value:
             return row
     return -1
 
@@ -334,7 +334,7 @@ def require_sample_mode(xqmx: XQMX, operation: str) -> None:
 # ============================================================================
 
 
-def expand_onehot(model: XQMX, indices: list[int], penalty: float) -> None:
+def expand_onehot(model: XQMX, indices: list[int], penalty: int) -> None:
     """
     Add a one-hot constraint: exactly one variable in indices must be 1.
 
@@ -359,10 +359,10 @@ def expand_onehot(model: XQMX, indices: list[int], penalty: float) -> None:
     n = len(indices)
     for a in range(n):
         for b in range(a + 1, n):
-            model.add_quadratic(indices[a], indices[b], 2.0 * penalty)
+            model.add_quadratic(indices[a], indices[b], 2 * penalty)
 
 
-def expand_exclude(model: XQMX, i: int, j: int, penalty: float) -> None:
+def expand_exclude(model: XQMX, i: int, j: int, penalty: int) -> None:
     """
     Add an exclusion constraint: variables i and j cannot both be 1.
 
@@ -374,7 +374,7 @@ def expand_exclude(model: XQMX, i: int, j: int, penalty: float) -> None:
     model.add_quadratic(i, j, penalty)
 
 
-def expand_implies(model: XQMX, i: int, j: int, penalty: float) -> None:
+def expand_implies(model: XQMX, i: int, j: int, penalty: int) -> None:
     """
     Add an implication constraint: x_i = 1 implies x_j = 1.
 
@@ -392,7 +392,7 @@ def expand_implies(model: XQMX, i: int, j: int, penalty: float) -> None:
     model.add_quadratic(i, j, -penalty)
 
 
-def compute_energy(model: XQMX, sample: XQMX) -> float:
+def compute_energy(model: XQMX, sample: XQMX) -> int:
     """
     Compute the energy of a sample with respect to a model.
 
@@ -408,7 +408,7 @@ def compute_energy(model: XQMX, sample: XQMX) -> float:
     if model.size != sample.size:
         raise ValueError(f"Model and sample size mismatch: {model.size} vs {sample.size}")
 
-    energy = 0.0
+    energy = 0
 
     # Linear contribution
     for i, coeff in model.linear.items():

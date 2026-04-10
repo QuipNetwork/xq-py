@@ -25,6 +25,7 @@ class LoopFrame:
     target: int  # PC to jump back to
     values: list[Value]  # All loop values (plain list, not Vec)
     index: int = 0  # Current position in values
+    start_offset: int = 0  # Base index for LIDX (original start value)
 
 
 @dataclass
@@ -50,12 +51,12 @@ class JumpControl:
     def push_loop_range(self, target: int, start: int, count: int) -> None:
         """Push a RANGE loop frame."""
         values = list(range(start, start + count))
-        self.loop_stack.append(LoopFrame(target=target, values=values))
+        self.loop_stack.append(LoopFrame(target=target, values=values, start_offset=start))
 
     def push_loop_iter(self, target: int, vec: Vec, start_idx: int, end_idx: int) -> None:
         """Push an ITER loop frame. Copies elements for immutability."""
         values = [vec.get(i) for i in range(start_idx, end_idx)]
-        self.loop_stack.append(LoopFrame(target=target, values=values))
+        self.loop_stack.append(LoopFrame(target=target, values=values, start_offset=start_idx))
 
     def pop_loop(self) -> LoopFrame:
         """Pop the current loop frame. Raises LoopError if no active loop."""
@@ -87,6 +88,13 @@ class JumpControl:
             raise LoopError("No active loop")
         frame = self.loop_stack[-1]
         return frame.values[frame.index]
+
+    def current_loop_index(self) -> int:
+        """Get current loop index (offset-adjusted). Raises LoopError if no active loop."""
+        if not self.loop_stack:
+            raise LoopError("No active loop")
+        frame = self.loop_stack[-1]
+        return frame.index + frame.start_offset
 
     @property
     def in_loop(self) -> bool:

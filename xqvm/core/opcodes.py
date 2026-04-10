@@ -82,8 +82,16 @@ class Opcode(Enum):
         (OperandType.REGISTER,),
         "Copy current loop value to register",
     )
-    RANGE = OpcodeMeta(
+    LIDX = OpcodeMeta(
         0x06,
+        0,
+        0,
+        1,
+        (OperandType.REGISTER,),
+        "Copy current loop index to register",
+    )
+    RANGE = OpcodeMeta(
+        0x07,
         2,
         0,
         0,
@@ -91,7 +99,7 @@ class Opcode(Enum):
         "Start range loop: pop count, start → iterate [start, start+count)",
     )
     ITER = OpcodeMeta(
-        0x07,
+        0x08,
         2,
         0,
         1,
@@ -763,4 +771,4 @@ class Opcode(Enum):
 
 
 # Verify we have exactly 85 opcodes
-assert len(Opcode) == 84, f"Expected 84 opcodes, got {len(Opcode)}"
+assert len(Opcode) == 85, f"Expected 85 opcodes, got {len(Opcode)}"

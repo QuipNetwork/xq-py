@@ -101,6 +101,7 @@ class Executor:
             Opcode.ITER: self._runner_ITER,
             Opcode.NEXT: self._runner_NEXT,
             Opcode.LVAL: self._runner_LVAL,
+            Opcode.LIDX: self._runner_LIDX,
             # Stack & Register I/O
             Opcode.PUSH1: self._runner_PUSH,
             Opcode.PUSH2: self._runner_PUSH,
@@ -365,6 +366,12 @@ class Executor:
         reg = instr.operands[0]
         value = self.state.jc.current_loop_value()
         self.state.set_register(reg, value)
+
+    def _runner_LIDX(self, instr: Instruction) -> None:
+        """LIDX: Copy current loop index to register."""
+        reg = instr.operands[0]
+        index = self.state.jc.current_loop_index()
+        self.state.set_register(reg, index)
 
     def _runner_PUSH(self, instr: Instruction) -> None:
         """PUSH1-8: Push N-byte constant (big-endian signed two's complement)."""

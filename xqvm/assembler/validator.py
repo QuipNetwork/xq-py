@@ -27,7 +27,8 @@ def validate(instructions: list[Instruction]) -> None:
 
     Checks:
       - Register operands are in range 0-255
-      - Target operands (JUMP/JUMPI) are in u8 range 0-255
+      - Target operands (JUMP1/JUMPI1) are in u8 range 0-255
+      - JUMP2/JUMPI2 use IMMEDIATE operands (bytes of u16, validated by encoding)
       - Operand counts match opcode metadata
 
     Target label resolution and duplicate detection are handled

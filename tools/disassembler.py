@@ -20,6 +20,9 @@ _PUSH_OPCODES = frozenset(
     }
 )
 
+_JUMP_OPCODES = frozenset({Opcode.JUMP1, Opcode.JUMP2})
+_JUMPI_OPCODES = frozenset({Opcode.JUMPI1, Opcode.JUMPI2})
+
 
 def _format_operand(value: int, typ: OperandType) -> str:
     """Format a single operand value as assembly text."""
@@ -35,11 +38,24 @@ def _format_operand(value: int, typ: OperandType) -> str:
     return str(value)
 
 
+def _resolve_jump_target(instr: Instruction) -> int:
+    """Resolve a JUMP/JUMPI instruction's target ID from its operands."""
+    if instr.opcode in (Opcode.JUMP1, Opcode.JUMPI1):
+        return instr.operands[0]
+    return (instr.operands[0] << 8) | instr.operands[1]
+
+
 def disassemble_instruction(instr: Instruction) -> str:
     """Convert a single Instruction to assembly text."""
     if instr.opcode in _PUSH_OPCODES:
         value = int.from_bytes(bytes(instr.operands), byteorder="big", signed=True)
         return f"PUSH {_format_operand(value, OperandType.IMMEDIATE)}"
+
+    if instr.opcode in _JUMP_OPCODES:
+        return f"JUMP .{_resolve_jump_target(instr)}"
+
+    if instr.opcode in _JUMPI_OPCODES:
+        return f"JUMPI .{_resolve_jump_target(instr)}"
 
     meta = instr.opcode.meta
     parts = [instr.opcode.name]

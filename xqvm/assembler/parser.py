@@ -201,6 +201,29 @@ def parse(source: str) -> list[Instruction]:
     instructions: list[Instruction] = []
 
     for opcode_name, operand_tokens, line_num in tokens:
+        upper_name = opcode_name.upper()
+
+        # JUMP/JUMPI sugar: resolve label, pick JUMP1/JUMP2 or JUMPI1/JUMPI2
+        if upper_name in ("JUMP", "JUMPI"):
+            if len(operand_tokens) != 1:
+                raise ParseError(
+                    f"{upper_name} expects 1 operand, got {len(operand_tokens)}",
+                    line_num,
+                )
+            user_label = _parse_target_label(operand_tokens[0], line_num)
+            if user_label not in label_map:
+                raise ParseError(f"Undefined target .{user_label}", line_num)
+            seq_id = label_map[user_label]
+            if seq_id <= 255:
+                opcode = Opcode.JUMP1 if upper_name == "JUMP" else Opcode.JUMPI1
+                instructions.append(Instruction(opcode, (seq_id,), line_num))
+            else:
+                opcode = Opcode.JUMP2 if upper_name == "JUMP" else Opcode.JUMPI2
+                hi = (seq_id >> 8) & 0xFF
+                lo = seq_id & 0xFF
+                instructions.append(Instruction(opcode, (hi, lo), line_num))
+            continue
+
         opcode = Opcode.from_name(opcode_name)
         if opcode is None:
             raise ParseError(f"Unknown opcode '{opcode_name}'", line_num)
@@ -213,20 +236,6 @@ def parse(source: str) -> list[Instruction]:
                     line_num,
                 )
             instructions.append(Instruction(opcode, (), line_num))
-            continue
-
-        # JUMP/JUMPI: resolve label to sequential target ID
-        if opcode in (Opcode.JUMP, Opcode.JUMPI):
-            if len(operand_tokens) != 1:
-                raise ParseError(
-                    f"{opcode.name} expects 1 operand, got {len(operand_tokens)}",
-                    line_num,
-                )
-            user_label = _parse_target_label(operand_tokens[0], line_num)
-            if user_label not in label_map:
-                raise ParseError(f"Undefined target .{user_label}", line_num)
-            seq_id = label_map[user_label]
-            instructions.append(Instruction(opcode, (seq_id,), line_num))
             continue
 
         # All other opcodes: standard operand parsing

@@ -34,64 +34,72 @@ class Opcode(Enum):
     # === Opcode Table Begins ===
 
     # Control Flow (0x00-0x09)
-    NOP = OpcodeMeta(
-        0x00,
-        0,
-        0,
-        0,
-        (),
-        "No operation",
-    )
     TARGET = OpcodeMeta(
-        0x01,
+        0x00,
         0,
         0,
         0,
         (),
         "Define jump target",
     )
-    JUMP = OpcodeMeta(
+    JUMP1 = OpcodeMeta(
+        0x01,
+        0,
+        0,
+        1,
+        (OperandType.TARGET,),
+        "Unconditional jump to target (u8)",
+    )
+    JUMPI1 = OpcodeMeta(
         0x02,
-        0,
+        1,
         0,
         1,
         (OperandType.TARGET,),
-        "Unconditional jump to target",
+        "Jump to target if top of stack is non-zero (u8)",
     )
-    JUMPI = OpcodeMeta(
+    JUMP2 = OpcodeMeta(
         0x03,
-        1,
         0,
-        1,
-        (OperandType.TARGET,),
-        "Jump to target if top of stack is non-zero",
+        0,
+        2,
+        (OperandType.IMMEDIATE, OperandType.IMMEDIATE),
+        "Unconditional jump to target (u16)",
     )
-    NEXT = OpcodeMeta(
+    JUMPI2 = OpcodeMeta(
         0x04,
-        0,
-        0,
-        0,
-        (),
-        "Advance loop index, jump back or exit",
-    )
-    LVAL = OpcodeMeta(
-        0x05,
-        0,
-        0,
         1,
-        (OperandType.REGISTER,),
-        "Copy current loop value to register",
+        0,
+        2,
+        (OperandType.IMMEDIATE, OperandType.IMMEDIATE),
+        "Jump to target if top of stack is non-zero (u16)",
     )
     LIDX = OpcodeMeta(
-        0x06,
+        0x05,
         0,
         0,
         1,
         (OperandType.REGISTER,),
         "Copy current loop index to register",
     )
-    RANGE = OpcodeMeta(
+    LVAL = OpcodeMeta(
+        0x06,
+        0,
+        0,
+        1,
+        (OperandType.REGISTER,),
+        "Copy current loop value to register",
+    )
+    NEXT = OpcodeMeta(
         0x07,
+        0,
+        0,
+        0,
+        (),
+        "Advance loop index, jump back or exit",
+    )
+    RANGE = OpcodeMeta(
+        0x08,
         2,
         0,
         0,
@@ -99,20 +107,12 @@ class Opcode(Enum):
         "Start range loop: pop count, start → iterate [start, start+count)",
     )
     ITER = OpcodeMeta(
-        0x08,
+        0x09,
         2,
         0,
         1,
         (OperandType.REGISTER,),
         "Start vec iteration: pop end_idx, start_idx → iterate vec[start:end]",
-    )
-    HALT = OpcodeMeta(
-        0x09,
-        0,
-        0,
-        0,
-        (),
-        "Stop execution",
     )
 
     # Register Manipulation (0x0A-0x0F)
@@ -741,6 +741,24 @@ class Opcode(Enum):
         "Compute energy",
     )
 
+    # Special (0xF0, 0xFF)
+    NOP = OpcodeMeta(
+        0xF0,
+        0,
+        0,
+        0,
+        (),
+        "No operation",
+    )
+    HALT = OpcodeMeta(
+        0xFF,
+        0,
+        0,
+        0,
+        (),
+        "Stop execution",
+    )
+
     # === Opcode Table Ends ===
 
     @property
@@ -770,5 +788,5 @@ class Opcode(Enum):
             return None
 
 
-# Verify we have exactly 85 opcodes
-assert len(Opcode) == 85, f"Expected 85 opcodes, got {len(Opcode)}"
+# Verify we have exactly 87 opcodes
+assert len(Opcode) == 87, f"Expected 87 opcodes, got {len(Opcode)}"

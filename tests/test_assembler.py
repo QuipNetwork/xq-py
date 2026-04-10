@@ -424,7 +424,7 @@ class TestDisassembleInstruction:
         assert disassemble_instruction(instr) == "LOAD r5"
 
     def test_target(self):
-        instr = Instruction(Opcode.JUMP, (3,))
+        instr = Instruction(Opcode.JUMP1, (3,))
         assert disassemble_instruction(instr) == "JUMP .3"
 
     def test_two_registers(self):

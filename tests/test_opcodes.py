@@ -9,8 +9,8 @@ class TestOpcodeCount:
     """Tests for opcode count and completeness."""
 
     def test_total_opcode_count(self):
-        """Should have exactly 85 opcodes."""
-        assert len(Opcode) == 85
+        """Should have exactly 87 opcodes."""
+        assert len(Opcode) == 87
 
     def test_all_opcodes_have_metadata(self):
         """Every opcode must have valid metadata."""
@@ -27,14 +27,16 @@ class TestOpcodeCodeLookup:
 
     def test_from_code_valid(self):
         """from_code returns correct opcode for valid codes."""
-        assert Opcode.from_code(0x00) == Opcode.NOP
-        assert Opcode.from_code(0x09) == Opcode.HALT
+        assert Opcode.from_code(0x00) == Opcode.TARGET
+        assert Opcode.from_code(0x09) == Opcode.ITER
         assert Opcode.from_code(0x11) == Opcode.PUSH1
         assert Opcode.from_code(0x20) == Opcode.ADD
+        assert Opcode.from_code(0xF0) == Opcode.NOP
+        assert Opcode.from_code(0xFF) == Opcode.HALT
 
     def test_from_code_invalid(self):
         """from_code returns None for invalid codes."""
-        assert Opcode.from_code(0xFF) is None
+        assert Opcode.from_code(0xFE) is None
         assert Opcode.from_code(0x99) is None
         assert Opcode.from_code(-1) is None
 
@@ -113,18 +115,22 @@ class TestOpcodeGroupRanges:
     def test_control_flow_range(self):
         """Control flow opcodes in 0x00-0x09 range."""
         control_ops = [
-            Opcode.NOP,
             Opcode.TARGET,
-            Opcode.JUMP,
-            Opcode.JUMPI,
-            Opcode.NEXT,
+            Opcode.JUMP1,
+            Opcode.JUMPI1,
+            Opcode.JUMP2,
+            Opcode.JUMPI2,
+            Opcode.LIDX,
             Opcode.LVAL,
+            Opcode.NEXT,
             Opcode.RANGE,
             Opcode.ITER,
-            Opcode.HALT,
         ]
         for op in control_ops:
             assert 0x00 <= op.code <= 0x09, f"{op.name} not in control range"
+        # NOP and HALT are in special range
+        assert Opcode.NOP.code == 0xF0
+        assert Opcode.HALT.code == 0xFF
 
     def test_register_manip_range(self):
         """Register manipulation opcodes in 0x0A-0x0F range."""
@@ -279,11 +285,17 @@ class TestSpecificOpcodeMetadata:
         assert meta.operand_count == 1
         assert meta.operand_types == (OperandType.REGISTER,)
 
-    def test_jump_metadata(self):
-        """JUMP takes target operand."""
-        meta = Opcode.JUMP.meta
+    def test_jump1_metadata(self):
+        """JUMP1 takes target operand (u8)."""
+        meta = Opcode.JUMP1.meta
         assert meta.operand_count == 1
         assert meta.operand_types == (OperandType.TARGET,)
+
+    def test_jump2_metadata(self):
+        """JUMP2 takes two immediate operands (u16)."""
+        meta = Opcode.JUMP2.meta
+        assert meta.operand_count == 2
+        assert meta.operand_types == (OperandType.IMMEDIATE, OperandType.IMMEDIATE)
 
     def test_target_metadata(self):
         """TARGET has no operands."""

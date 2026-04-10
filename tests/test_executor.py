@@ -62,7 +62,7 @@ class TestControlFlow:
                 Instruction(Opcode.STOW, (0,)),  # counter++
                 Instruction(Opcode.PUSH1, (3,)),
                 Instruction(Opcode.LT),  # counter < 3?
-                Instruction(Opcode.JUMPI, (0,)),  # Jump back to target 0
+                Instruction(Opcode.JUMPI1, (0,)),  # Jump back to target 0
                 Instruction(Opcode.HALT),
             ]
         )
@@ -75,7 +75,7 @@ class TestControlFlow:
             [
                 Instruction(Opcode.PUSH1, (42,)),
                 Instruction(Opcode.STOW, (0,)),
-                Instruction(Opcode.JUMP, (0,)),  # Forward jump to target 0
+                Instruction(Opcode.JUMP1, (0,)),  # Forward jump to target 0
                 Instruction(Opcode.PUSH1, (99,)),  # Skipped
                 Instruction(Opcode.STOW, (0,)),  # Skipped
                 Instruction(Opcode.TARGET, ()),  # Target 0 defined after jump
@@ -89,7 +89,7 @@ class TestControlFlow:
         ex = run_program(
             [
                 Instruction(Opcode.PUSH1, (1,)),  # Non-zero condition
-                Instruction(Opcode.JUMPI, (0,)),  # Forward jump
+                Instruction(Opcode.JUMPI1, (0,)),  # Forward jump
                 Instruction(Opcode.PUSH1, (99,)),  # Skipped
                 Instruction(Opcode.STOW, (0,)),  # Skipped
                 Instruction(Opcode.TARGET, ()),
@@ -108,7 +108,7 @@ class TestControlFlow:
                 Instruction(Opcode.STOW, (0,)),
                 Instruction(Opcode.PUSH1, (1,)),  # Non-zero condition
                 Instruction(Opcode.NOT),  # Invert to 0, so we don't jump
-                Instruction(Opcode.JUMPI, (0,)),  # Won't jump (0)
+                Instruction(Opcode.JUMPI1, (0,)),  # Won't jump (0)
                 Instruction(Opcode.HALT),
             ]
         )
@@ -122,7 +122,7 @@ class TestControlFlow:
                 Instruction(Opcode.STOW, (0,)),
                 Instruction(Opcode.TARGET, ()),  # Define target first
                 Instruction(Opcode.PUSH1, (0,)),  # Zero condition
-                Instruction(Opcode.JUMPI, (0,)),  # Should not jump (0)
+                Instruction(Opcode.JUMPI1, (0,)),  # Should not jump (0)
                 Instruction(Opcode.HALT),
             ]
         )
@@ -1715,7 +1715,7 @@ class TestErrorHandling:
         """Jump to undefined target raises TargetNotFound."""
         prog = make_program(
             [
-                Instruction(Opcode.JUMP, (99,)),  # Target 99 not defined
+                Instruction(Opcode.JUMP1, (99,)),  # Target 99 not defined
                 Instruction(Opcode.HALT),
             ]
         )

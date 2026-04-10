@@ -37,9 +37,9 @@ def build() -> Problem:
         j = problem.stow("j", edges.get(offset + 1))
         w = problem.stow("w", edges.get(offset + 2))
 
-        problem.model.add_linear(i, -w)
-        problem.model.add_linear(j, -w)
-        problem.model.add_quadratic(i, j, w * 2)
+        problem.model.linear[i].add(-w)
+        problem.model.linear[j].add(-w)
+        problem.model.quadratic[i, j].add(w * 2)
 
     # --- Decoder output: extract partition ---
     partition = problem.output("partition", type=Types.Vec)

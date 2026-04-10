@@ -2,7 +2,7 @@
 Tests for the constraint programming DSL (xqvm.cp).
 """
 
-from xqcp import CompiledPrograms, Problem, Types, triu
+from xqcp import CompiledPrograms, Problem, Types, xq_triu
 from xqvm.core import XQMXDomain
 
 # ---------------------------------------------------------------------------
@@ -26,19 +26,11 @@ def build_tsp_problem() -> Problem:
 
     with problem.range(0, num_cities - 1) as city_i:
         with problem.range(city_i + 1, num_cities) as city_j:
-            dist = problem.stow("dist", distance_matrix.get(triu(city_i, city_j)))
+            dist = problem.stow("dist", distance_matrix.get(xq_triu(city_i, city_j)))
             with problem.range(0, num_cities) as position:
                 next_position = (position + 1) % num_cities
-                problem.model.add_quadratic(
-                    (city_i, position),
-                    (city_j, next_position),
-                    dist,
-                )
-                problem.model.add_quadratic(
-                    (city_j, position),
-                    (city_i, next_position),
-                    dist,
-                )
+                problem.model.quadratic[(city_i, position), (city_j, next_position)].add(dist)
+                problem.model.quadratic[(city_j, position), (city_i, next_position)].add(dist)
 
     with problem.range(0, num_cities) as city:
         problem.model.apply_onehot_row(city, penalty=100)
@@ -126,7 +118,7 @@ class TestExpressions:
 
         ci = LoopVar(10, "ci")
         cj = LoopVar(11, "cj")
-        expr = triu(ci, cj)
+        expr = xq_triu(ci, cj)
         lines: list[str] = []
         expr.emit(lines, 0)
         assert lines == ["LOAD r10", "LOAD r11", "IDXTRIU"]
@@ -390,9 +382,9 @@ def build_maxcut_problem() -> Problem:
         j = problem.stow("j", edges.get(offset + 1))
         w = problem.stow("w", edges.get(offset + 2))
 
-        problem.model.add_linear(i, -w)
-        problem.model.add_linear(j, -w)
-        problem.model.add_quadratic(i, j, w * 2)
+        problem.model.linear[i].add(-w)
+        problem.model.linear[j].add(-w)
+        problem.model.quadratic[i, j].add(w * 2)
 
     partition = problem.output("partition", type=Types.Vec)
     with problem.range(0, num_nodes) as node:

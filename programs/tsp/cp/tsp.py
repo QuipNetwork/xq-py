@@ -11,7 +11,7 @@ Usage:
 
 from pathlib import Path
 
-from xqcp import Problem, Types, triu
+from xqcp import Problem, Types, xq_triu
 from xqvm.core import XQMXDomain
 
 OUTPUT_DIR = Path(__file__).parent
@@ -36,21 +36,13 @@ def build() -> Problem:
     # --- Objective: distance couplings ---
     with problem.range(0, num_cities - 1) as city_i:
         with problem.range(city_i + 1, num_cities) as city_j:
-            dist = problem.stow("dist", distance_matrix.get(triu(city_i, city_j)))
+            dist = problem.stow("dist", distance_matrix.get(xq_triu(city_i, city_j)))
 
             with problem.range(0, num_cities) as position:
                 next_position = (position + 1) % num_cities
 
-                problem.model.add_quadratic(
-                    (city_i, position),
-                    (city_j, next_position),
-                    dist,
-                )
-                problem.model.add_quadratic(
-                    (city_j, position),
-                    (city_i, next_position),
-                    dist,
-                )
+                problem.model.quadratic[(city_i, position), (city_j, next_position)].add(dist)
+                problem.model.quadratic[(city_j, position), (city_i, next_position)].add(dist)
 
     # --- Constraints: one-hot rows and columns ---
     with problem.range(0, num_cities) as city:

@@ -184,17 +184,17 @@ class TestTSPCompilation:
     def test_encoder_has_sections(self) -> None:
         problem = build_tsp_problem()
         programs = problem.compile()
-        assert "# === Inputs ===" in programs.encoder
-        assert "# === Allocations ===" in programs.encoder
-        assert "# === Objective ===" in programs.encoder
-        assert "# === Constraints ===" in programs.encoder
-        assert "# === Output ===" in programs.encoder
+        assert "; === Inputs ===" in programs.encoder
+        assert "; === Allocations ===" in programs.encoder
+        assert "; === Objective ===" in programs.encoder
+        assert "; === Constraints ===" in programs.encoder
+        assert "; === Output ===" in programs.encoder
         assert "HALT" in programs.encoder
 
     def test_verifier_has_sections(self) -> None:
         problem = build_tsp_problem()
         programs = problem.compile()
-        assert "# === Inputs ===" in programs.verifier
+        assert "; === Inputs ===" in programs.verifier
         assert "ROWSUM" in programs.verifier
         assert "COLSUM" in programs.verifier
         assert "ENERGY" in programs.verifier

@@ -21,7 +21,7 @@ class TestParserBasic:
         assert parse("") == []
 
     def test_comment_only(self):
-        assert parse("# this is a comment") == []
+        assert parse("; this is a comment") == []
 
     def test_blank_lines(self):
         assert parse("\n\n\n") == []
@@ -103,7 +103,7 @@ class TestParserLineNumbers:
         assert result[1].line == 4
 
     def test_line_numbers_with_comments(self):
-        result = parse("# header\nNOP\n# middle\nHALT")
+        result = parse("; header\nNOP\n; middle\nHALT")
         assert result[0].line == 2
         assert result[1].line == 4
 
@@ -112,7 +112,7 @@ class TestParserInlineComments:
     """Inline comment stripping."""
 
     def test_inline_comment(self):
-        result = parse("PUSH 10 # push ten")
+        result = parse("PUSH 10 ; push ten")
         assert result[0].operands == (10,)
 
     def test_instruction_with_trailing_whitespace(self):
@@ -555,17 +555,17 @@ class TestAssembleAndExecute:
         from xqvm.core.executor import Executor
 
         source = """
-        # Sum 0..4 → r1
+        ; Sum 0..4 → r1
         PUSH 0
-        STOW r1       # r1 = accumulator = 0
-        PUSH 0        # start
-        PUSH 5        # count
+        STOW r1       ; r1 = accumulator = 0
+        PUSH 0        ; start
+        PUSH 5        ; count
         RANGE
-          LVAL r0     # r0 = loop value
+          LVAL r0     ; r0 = loop value
           LOAD r1
           LOAD r0
           ADD
-          STOW r1     # r1 += r0
+          STOW r1     ; r1 += r0
         NEXT
         HALT
         """
@@ -581,7 +581,7 @@ class TestAssembleAndExecute:
         PUSH 42
         STOW r0
         PUSH 1
-        JUMPI .0       # Forward jump — skip the overwrite
+        JUMPI .0       ; Forward jump — skip the overwrite
         PUSH 99
         STOW r0
         TARGET .0

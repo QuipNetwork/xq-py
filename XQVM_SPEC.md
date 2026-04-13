@@ -416,32 +416,46 @@ The assembler accepts `JUMP .N` and `JUMPI .N` as syntactic sugar for the `JUMP1
 
 ## Binary Bytecode Format
 
-A program is encoded as a raw byte stream with no header, length prefix, or alignment padding. Each instruction is one opcode byte followed by zero or more operand bytes. The total length of each instruction is determined solely by its opcode.
+A program is encoded as a raw byte stream with no header, magic bytes, length prefix, or alignment padding. Each instruction is laid out as:
 
-### Opcode Encoding
+```
+[ opcode : 1 byte ] [ operand bytes : 0 – 8 bytes ]
+```
 
-Each opcode occupies a single byte. Valid opcode bytes fall in the range `0x00`–`0x7F` plus the two reserved-high values `0xF0` (`NOP`) and `0xFF` (`HALT`). All other bytes in `0x80`–`0xFF` are reserved and must be rejected by the decoder.
+Instruction length is determined solely by the opcode (see the [Instruction Length Table](#instruction-length-table)). Multi-operand opcodes concatenate their operands in the order listed in the main opcode tables.
 
-### Operand Encoding
+### Opcode Byte
 
-| Operand type | Width | Encoding |
-|--------------|-------|----------|
-| Register (`reg`) | 1 byte | Unsigned `u8`. Range: `0`–`255`. |
-| Target (`.N`), u8 form | 1 byte | Unsigned `u8`. Range: `0`–`255`. Used by `JUMP1`/`JUMPI1`. |
-| Target (`.N`), u16 form | 2 bytes | Unsigned `u16` big-endian. Range: `0`–`65535`. Used by `JUMP2`/`JUMPI2`. |
-| Immediate (`PUSHn`) | `n` bytes | Big-endian signed two's complement. Range depends on `n` (1–8 bytes). |
+A single byte drawn from:
 
-`TARGET` has no operand — the `.N` label in assembly source is resolved by the assembler and does not appear in bytecode.
+- `0x00`–`0x7F` — the normal instruction space
+- `0xF0` — `NOP`
+- `0xFF` — `HALT`
 
-Special case: `ENERGY` has two register operands (model register followed by sample register), totalling 2 operand bytes.
+All other bytes in `0x80`–`0xFF` are reserved and must be rejected by the decoder.
+
+**`TARGET` (`0x00`) has no operand.** The one-byte opcode is the entire instruction. `TARGET` marks a jump destination in the instruction stream and is a no-op at runtime; its only purpose is to establish the target table during pre-scan. Each `TARGET` encountered in program order is assigned the next sequential ID (0, 1, 2, …) and registered at its PC. The `.N` label seen in assembly source (e.g. `TARGET .3`) is assembler-only syntax: the assembler uses it to resolve `JUMP`/`JUMPI` references; it is **never emitted into bytecode**.
+
+### Operand Bytes
+
+| Operand | Width | Encoding | Used by |
+|---------|-------|----------|---------|
+| Register | 1 byte | `u8`, range `0`–`255` | all register-taking opcodes |
+| Label (u8) | 1 byte | `u8`, range `0`–`255` | `JUMP1`, `JUMPI1` |
+| Label (u16) | 2 bytes | `u16` big-endian, range `0`–`65535` | `JUMP2`, `JUMPI2` |
+| Immediate | `n` bytes (`n` = 1..8) | big-endian signed two's complement | `PUSH1`–`PUSH8` |
+
+Label operands encode the **sequential target ID produced by the `TARGET` pre-scan** — not a PC offset, and not the source-level `.N` token. The assembler emits `JUMP1`/`JUMPI1` when the ID fits in one byte and `JUMP2`/`JUMPI2` otherwise (see the [`JUMP` / `JUMPI` sugar](#jump--jumpi-sugar) description).
+
+`ENERGY` is the only opcode with two register operands; they are concatenated in order `[ model_reg, sample_reg ]`. For example `ENERGY r0 r1 → 0x7F 0x00 0x01`.
 
 ### Instruction Length Table
 
 | Length | Opcodes |
 |--------|---------|
 | 1 byte (opcode only) | `TARGET`, `NEXT`, `RANGE`, `NOP`, `HALT`, `POP`, `SCLR`, `SWAP`, `COPY`, `ADD`, `SUB`, `MUL`, `DIV`, `MOD`, `SQR`, `ABS`, `NEG`, `MIN`, `MAX`, `INC`, `DEC`, `EQ`, `LT`, `GT`, `LTE`, `GTE`, `NOT`, `AND`, `OR`, `XOR`, `BAND`, `BOR`, `BXOR`, `BNOT`, `SHL`, `SHR`, `IDXGRID`, `IDXTRIU` |
-| 2 bytes (opcode + 1) | `JUMP1` (1 + u8 target), `JUMPI1` (1 + u8 target), `LIDX`, `LVAL`, `ITER`, `LOAD`, `STOW`, `DROP`, `INPUT`, `OUTPUT`, `PUSH1`, `VEC`, `VECI`, `VECX`, `BQMX`, `SQMX`, `XQMX`, `BSMX`, `SSMX`, `XSMX`, `VECPUSH`, `VECGET`, `VECSET`, `VECLEN`, `GETLINE`, `SETLINE`, `ADDLINE`, `GETQUAD`, `SETQUAD`, `ADDQUAD`, `RESIZE`, `ROWFIND`, `COLFIND`, `ROWSUM`, `COLSUM`, `ONEHOTR`, `ONEHOTC`, `EXCLUDE`, `IMPLIES` |
-| 3 bytes (opcode + 2) | `JUMP2` (1 + u16 target), `JUMPI2` (1 + u16 target), `PUSH2` (1 + 2 imm), `ENERGY` (1 + 2 reg) |
+| 2 bytes (opcode + 1) | `JUMP1` (1 + u8 label), `JUMPI1` (1 + u8 label), `LIDX`, `LVAL`, `ITER`, `LOAD`, `STOW`, `DROP`, `INPUT`, `OUTPUT`, `PUSH1`, `VEC`, `VECI`, `VECX`, `BQMX`, `SQMX`, `XQMX`, `BSMX`, `SSMX`, `XSMX`, `VECPUSH`, `VECGET`, `VECSET`, `VECLEN`, `GETLINE`, `SETLINE`, `ADDLINE`, `GETQUAD`, `SETQUAD`, `ADDQUAD`, `RESIZE`, `ROWFIND`, `COLFIND`, `ROWSUM`, `COLSUM`, `ONEHOTR`, `ONEHOTC`, `EXCLUDE`, `IMPLIES` |
+| 3 bytes (opcode + 2) | `JUMP2` (1 + u16 label), `JUMPI2` (1 + u16 label), `PUSH2` (1 + 2 imm), `ENERGY` (1 + 2 reg) |
 | 4 bytes | `PUSH3` |
 | 5 bytes | `PUSH4` |
 | 6 bytes | `PUSH5` |
@@ -449,7 +463,7 @@ Special case: `ENERGY` has two register operands (model register followed by sam
 | 8 bytes | `PUSH7` |
 | 9 bytes | `PUSH8` |
 
-Note: `XQMX` and `XSMX` have 1 register operand (2 bytes total) but pop 2 values from stack. Their bytecode length is 2 bytes, not 3.
+> `XQMX` and `XSMX` take one register operand (2 bytes on the wire) but additionally pop two values from the stack. Their bytecode length is 2, not 3 — the popped stack values are not part of the encoding.
 
 ### Encoding Examples
 
@@ -460,7 +474,7 @@ TARGET               → 0x00                (no operand; .N is assembler-only)
 PUSH1 42             → 0x11 0x2A
 PUSH2 -1             → 0x12 0xFF 0xFF
 LOAD r5              → 0x0A 0x05
-JUMP1 .100           → 0x01 0x64           (JUMP .100 → JUMP1 — target fits in u8)
+JUMP1 .100           → 0x01 0x64           (JUMP .100 → JUMP1 — label fits in u8)
 JUMP2 .1000          → 0x03 0x03 0xE8      (JUMP .1000 → JUMP2 — u16 big-endian)
 JUMPI1 .5            → 0x02 0x05
 ENERGY r0 r1         → 0x7F 0x00 0x01

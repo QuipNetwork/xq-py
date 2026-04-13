@@ -374,20 +374,22 @@ Where `x_sample[i] = sample.linear[i]` (the variable assignment). Error: `ValueE
 
 ## Assembly Syntax
 
-```assembly
-# Comments start with #
-# Registers: r0, r1, ... r255 (8-bit slot ID)
-# Targets: .0, .1, .2 (dot-prefixed numeric, sugar for TARGET; resolved to sequential IDs by assembler)
-# Hex literals: 0x0A, 0xFF
+Line comments begin with `;` and run to end of line. Whitespace is insignificant outside operands.
 
-PUSH 0x00         # start = 0
-PUSH 0x0A         # count = 10
-RANGE             # range loop [0, 10)
-  LVAL r0         # r0 = current loop value
+```assembly
+; Comments start with ;
+; Registers: r0, r1, ... r255 (8-bit slot ID)
+; Targets: .0, .1, .2 (dot-prefixed numeric, sugar for TARGET; resolved to sequential IDs by assembler)
+; Hex literals: 0x0A, 0xFF
+
+PUSH 0x00         ; start = 0
+PUSH 0x0A         ; count = 10
+RANGE             ; range loop [0, 10)
+  LVAL r0         ; r0 = current loop value
   LOAD r0
   PUSH 0x05
   GT
-  JUMPI .0        # break if r0 > 5
+  JUMPI .0        ; break if r0 > 5
 NEXT
 TARGET .0
 HALT
@@ -398,11 +400,15 @@ HALT
 The assembler accepts `PUSH <value>` as syntactic sugar for the `PUSH1`–`PUSH8` family. The assembler parses the signed integer, selects the smallest `PUSHn` opcode that fits, and encodes the value as big-endian signed two's complement byte operands. The desugared forms (`PUSH1 0xFF`, `PUSH2 0x01 0x00`, etc.) remain valid.
 
 ```assembly
-PUSH 42            # → PUSH1 42
-PUSH -1            # → PUSH1 0xFF
-PUSH 256           # → PUSH2 0x01 0x00
-PUSH 2147483647    # → PUSH4 0x7F 0xFF 0xFF 0xFF
+PUSH 42            ; → PUSH1 42
+PUSH -1            ; → PUSH1 0xFF
+PUSH 256           ; → PUSH2 0x01 0x00
+PUSH 2147483647    ; → PUSH4 0x7F 0xFF 0xFF 0xFF
 ```
+
+### `JUMP` / `JUMPI` Sugar
+
+The assembler accepts `JUMP .N` and `JUMPI .N` as syntactic sugar for the `JUMP1`/`JUMP2` and `JUMPI1`/`JUMPI2` pairs. The assembler resolves `.N` to the sequential target ID and selects the `*1` (u8) form when the ID fits in one byte, or the `*2` (u16 big-endian) form otherwise. The desugared forms remain valid.
 
 ---
 
@@ -412,15 +418,18 @@ A program is encoded as a raw byte stream with no header, length prefix, or alig
 
 ### Opcode Encoding
 
-Each opcode occupies a single byte in the range `0x00`–`0x7F`. Bytes `0x80`–`0xFF` are reserved and must be rejected by the decoder.
+Each opcode occupies a single byte. Valid opcode bytes fall in the range `0x00`–`0x7F` plus the two reserved-high values `0xF0` (`NOP`) and `0xFF` (`HALT`). All other bytes in `0x80`–`0xFF` are reserved and must be rejected by the decoder.
 
 ### Operand Encoding
 
 | Operand type | Width | Encoding |
 |--------------|-------|----------|
 | Register (`reg`) | 1 byte | Unsigned `u8`. Range: `0`–`255`. |
-| Target (`.N`) | 1 byte | Unsigned `u8`. Range: `0`–`255`. Used by `JUMP`/`JUMPI` only; `TARGET` has no operand. |
+| Target (`.N`), u8 form | 1 byte | Unsigned `u8`. Range: `0`–`255`. Used by `JUMP1`/`JUMPI1`. |
+| Target (`.N`), u16 form | 2 bytes | Unsigned `u16` big-endian. Range: `0`–`65535`. Used by `JUMP2`/`JUMPI2`. |
 | Immediate (`PUSHn`) | `n` bytes | Big-endian signed two's complement. Range depends on `n` (1–8 bytes). |
+
+`TARGET` has no operand — the `.N` label in assembly source is resolved by the assembler and does not appear in bytecode.
 
 Special case: `ENERGY` has two register operands (model register followed by sample register), totalling 2 operand bytes.
 
@@ -428,9 +437,9 @@ Special case: `ENERGY` has two register operands (model register followed by sam
 
 | Length | Opcodes |
 |--------|---------|
-| 1 byte (opcode only) | `NOP`, `TARGET`, `NEXT`, `RANGE`, `HALT`, `POP`, `SCLR`, `SWAP`, `COPY`, `ADD`, `SUB`, `MUL`, `DIV`, `MOD`, `SQR`, `ABS`, `NEG`, `MIN`, `MAX`, `INC`, `DEC`, `EQ`, `LT`, `GT`, `LTE`, `GTE`, `NOT`, `AND`, `OR`, `XOR`, `BAND`, `BOR`, `BXOR`, `BNOT`, `SHL`, `SHR`, `IDXGRID`, `IDXTRIU` |
-| 2 bytes (opcode + 1) | `JUMP` (1 + u8 target), `JUMPI` (1 + u8 target), `LOAD`, `STOW`, `DROP`, `INPUT`, `OUTPUT`, `LVAL`, `ITER`, `PUSH1`, `VEC`, `VECI`, `VECX`, `BQMX`, `SQMX`, `XQMX`, `BSMX`, `SSMX`, `XSMX`, `VECPUSH`, `VECGET`, `VECSET`, `VECLEN`, `GETLINE`, `SETLINE`, `ADDLINE`, `GETQUAD`, `SETQUAD`, `ADDQUAD`, `RESIZE`, `ROWFIND`, `COLFIND`, `ROWSUM`, `COLSUM`, `ONEHOTR`, `ONEHOTC`, `EXCLUDE`, `IMPLIES` |
-| 3 bytes (opcode + 2) | `PUSH2` (1 + 2 imm), `ENERGY` (1 + 2 reg) |
+| 1 byte (opcode only) | `TARGET`, `NEXT`, `RANGE`, `NOP`, `HALT`, `POP`, `SCLR`, `SWAP`, `COPY`, `ADD`, `SUB`, `MUL`, `DIV`, `MOD`, `SQR`, `ABS`, `NEG`, `MIN`, `MAX`, `INC`, `DEC`, `EQ`, `LT`, `GT`, `LTE`, `GTE`, `NOT`, `AND`, `OR`, `XOR`, `BAND`, `BOR`, `BXOR`, `BNOT`, `SHL`, `SHR`, `IDXGRID`, `IDXTRIU` |
+| 2 bytes (opcode + 1) | `JUMP1` (1 + u8 target), `JUMPI1` (1 + u8 target), `LIDX`, `LVAL`, `ITER`, `LOAD`, `STOW`, `DROP`, `INPUT`, `OUTPUT`, `PUSH1`, `VEC`, `VECI`, `VECX`, `BQMX`, `SQMX`, `XQMX`, `BSMX`, `SSMX`, `XSMX`, `VECPUSH`, `VECGET`, `VECSET`, `VECLEN`, `GETLINE`, `SETLINE`, `ADDLINE`, `GETQUAD`, `SETQUAD`, `ADDQUAD`, `RESIZE`, `ROWFIND`, `COLFIND`, `ROWSUM`, `COLSUM`, `ONEHOTR`, `ONEHOTC`, `EXCLUDE`, `IMPLIES` |
+| 3 bytes (opcode + 2) | `JUMP2` (1 + u16 target), `JUMPI2` (1 + u16 target), `PUSH2` (1 + 2 imm), `ENERGY` (1 + 2 reg) |
 | 4 bytes | `PUSH3` |
 | 5 bytes | `PUSH4` |
 | 6 bytes | `PUSH5` |
@@ -443,14 +452,17 @@ Note: `XQMX` and `XSMX` have 1 register operand (2 bytes total) but pop 2 values
 ### Encoding Examples
 
 ```
-NOP             → 0x00
-PUSH1 42        → 0x11 0x2A
-PUSH2 -1        → 0x12 0xFF 0xFF
-LOAD r5         → 0x0A 0x05
-JUMP .100       → 0x02 0x64
-TARGET .3       → 0x01
-ENERGY r0 r1    → 0x7F 0x00 0x01
-BQMX r2         → 0x40 0x02
+NOP                  → 0xF0
+HALT                 → 0xFF
+TARGET               → 0x00                (no operand; .N is assembler-only)
+PUSH1 42             → 0x11 0x2A
+PUSH2 -1             → 0x12 0xFF 0xFF
+LOAD r5              → 0x0A 0x05
+JUMP1 .100           → 0x01 0x64           (JUMP .100 → JUMP1 — target fits in u8)
+JUMP2 .1000          → 0x03 0x03 0xE8      (JUMP .1000 → JUMP2 — u16 big-endian)
+JUMPI1 .5            → 0x02 0x05
+ENERGY r0 r1         → 0x7F 0x00 0x01
+BQMX r2              → 0x40 0x02
 ```
 
 ---
@@ -461,7 +473,7 @@ BQMX r2         → 0x40 0x02
 |-------|-------|-------|
 | Stack depth | 8192 (2^13) | `StackOverflow` if exceeded. |
 | Register slots | 256 (r0–r255) | 8-bit addressing. |
-| Target IDs | 0–255 | 8-bit in bytecode. Sequential assignment during pre-scan. |
+| Target IDs | 0–65535 | `u8` via `JUMP1`/`JUMPI1`, `u16` big-endian via `JUMP2`/`JUMPI2`. Sequential assignment during pre-scan. |
 | Loop nesting | Unbounded | Limited by available memory. |
 | XQMX size | Implementation-defined | No spec limit. |
 | Program length | Implementation-defined | No spec limit. |
@@ -474,4 +486,4 @@ The following byte values within `0x00`–`0x7F` are unassigned and reserved for
 
 `0x08`, `0x0D`, `0x19`, `0x1D`, `0x1E`, `0x1F`, `0x2C`, `0x2D`, `0x2E`, `0x2F`, `0x35`, `0x46`, `0x47`, `0x48`, `0x49`, `0x4D`, `0x4E`, `0x4F`, `0x54`, `0x55`, `0x56`, `0x57`, `0x58`, `0x59`, `0x5C`, `0x5D`, `0x5E`, `0x5F`, `0x6B`, `0x6C`, `0x6D`, `0x6E`, `0x6F`, `0x74`, `0x75`, `0x76`, `0x77`, `0x78`, `0x79`, `0x7A`, `0x7B`, `0x7C`, `0x7D`, `0x7E`
 
-All byte values `0x80`–`0xFF` are likewise reserved and illegal.
+All other byte values in `0x80`–`0xFF` are likewise reserved and illegal. The only valid opcodes outside `0x00`–`0x7F` are `0xF0` (`NOP`) and `0xFF` (`HALT`).

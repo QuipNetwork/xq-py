@@ -54,6 +54,8 @@ Programs execute independently with no shared state. Communication occurs only t
 ### Stack
 
 - Integer only. All primitive operations work on integers.
+- **Value type:** signed 64-bit integer. Valid range `[-2^63, 2^63 - 1]`.
+- **Overflow:** any operation that would produce a value outside the i64 range raises `ArithmeticOverflow` (same class as `DivisionByZero`, `StackOverflow`). This applies to arithmetic, shift, and `INC`/`DEC`/`NEG`/`ABS`/`SQR` opcodes, as well as integer values entering the VM through `INPUT`. Implementations backed by fixed-width 64-bit integers may instead wrap silently — such wrapping is implementation-defined and programs that rely on it are non-portable.
 - Maximum depth: 8192 (2^13)
 
 ### Registers (`r0`–`r255`)
@@ -472,6 +474,7 @@ BQMX r2              → 0x40 0x02
 | Limit | Value | Notes |
 |-------|-------|-------|
 | Stack depth | 8192 (2^13) | `StackOverflow` if exceeded. |
+| Stack value range | `[-2^63, 2^63 - 1]` | Signed 64-bit. `ArithmeticOverflow` if exceeded. |
 | Register slots | 256 (r0–r255) | 8-bit addressing. |
 | Target IDs | 0–65535 | `u8` via `JUMP1`/`JUMPI1`, `u16` big-endian via `JUMP2`/`JUMPI2`. Sequential assignment during pre-scan. |
 | Loop nesting | Unbounded | Limited by available memory. |

@@ -5,6 +5,7 @@ Tests for Executor and all 84 opcode handlers.
 import pytest
 
 from xqvm.core.errors import (
+    ArithmeticOverflow,
     DivisionByZero,
     LoopError,
     RegisterNotFound,
@@ -16,7 +17,7 @@ from xqvm.core.errors import (
 from xqvm.core.executor import Executor
 from xqvm.core.opcodes import Opcode
 from xqvm.core.program import Instruction, make_program, run_program
-from xqvm.core.state import MachineState
+from xqvm.core.state import I64_MAX, I64_MIN, MachineState
 from xqvm.core.vector import Vec
 from xqvm.core.xqmx import XQMX
 
@@ -1969,3 +1970,197 @@ class TestProgramAndInstruction:
         """Instruction stores line number."""
         instr = Instruction(Opcode.NOP, line=10)
         assert instr.line == 10
+
+
+# === i64 Overflow Tests ===
+
+
+def _push_i64(value: int) -> Instruction:
+    """Build a PUSH8 instruction for an arbitrary signed 64-bit value."""
+    encoded = value.to_bytes(8, byteorder="big", signed=True)
+    return Instruction(Opcode.PUSH8, tuple(encoded))
+
+
+class TestI64BoundaryLegal:
+    """Values at the i64 boundary are legal and round-trip cleanly."""
+
+    def test_push_i64_max(self):
+        ex = run_program([_push_i64(I64_MAX), Instruction(Opcode.HALT)])
+        assert ex.state.peek(0) == I64_MAX
+
+    def test_push_i64_min(self):
+        ex = run_program([_push_i64(I64_MIN), Instruction(Opcode.HALT)])
+        assert ex.state.peek(0) == I64_MIN
+
+    def test_stow_and_load_boundary(self):
+        ex = run_program(
+            [
+                _push_i64(I64_MAX),
+                Instruction(Opcode.STOW, (0,)),
+                Instruction(Opcode.LOAD, (0,)),
+                Instruction(Opcode.HALT),
+            ]
+        )
+        assert ex.state.peek(0) == I64_MAX
+
+
+class TestArithmeticOverflow:
+    """Arithmetic that leaves the i64 range raises ArithmeticOverflow."""
+
+    def test_add_overflow_positive(self):
+        with pytest.raises(ArithmeticOverflow):
+            run_program(
+                [
+                    _push_i64(I64_MAX),
+                    Instruction(Opcode.PUSH1, (1,)),
+                    Instruction(Opcode.ADD),
+                    Instruction(Opcode.HALT),
+                ]
+            )
+
+    def test_add_overflow_negative(self):
+        with pytest.raises(ArithmeticOverflow):
+            run_program(
+                [
+                    _push_i64(I64_MIN),
+                    Instruction(Opcode.PUSH1, (0xFF,)),  # -1
+                    Instruction(Opcode.ADD),
+                    Instruction(Opcode.HALT),
+                ]
+            )
+
+    def test_sub_overflow(self):
+        with pytest.raises(ArithmeticOverflow):
+            run_program(
+                [
+                    _push_i64(I64_MIN),
+                    Instruction(Opcode.PUSH1, (1,)),
+                    Instruction(Opcode.SUB),
+                    Instruction(Opcode.HALT),
+                ]
+            )
+
+    def test_mul_overflow(self):
+        with pytest.raises(ArithmeticOverflow):
+            run_program(
+                [
+                    _push_i64(I64_MAX),
+                    Instruction(Opcode.PUSH1, (2,)),
+                    Instruction(Opcode.MUL),
+                    Instruction(Opcode.HALT),
+                ]
+            )
+
+    def test_neg_of_i64_min_overflows(self):
+        """Classic case: -I64_MIN = 2^63, which is one past I64_MAX."""
+        with pytest.raises(ArithmeticOverflow):
+            run_program(
+                [
+                    _push_i64(I64_MIN),
+                    Instruction(Opcode.NEG),
+                    Instruction(Opcode.HALT),
+                ]
+            )
+
+    def test_abs_of_i64_min_overflows(self):
+        """abs(I64_MIN) = 2^63, which is one past I64_MAX."""
+        with pytest.raises(ArithmeticOverflow):
+            run_program(
+                [
+                    _push_i64(I64_MIN),
+                    Instruction(Opcode.ABS),
+                    Instruction(Opcode.HALT),
+                ]
+            )
+
+    def test_inc_overflow(self):
+        with pytest.raises(ArithmeticOverflow):
+            run_program(
+                [
+                    _push_i64(I64_MAX),
+                    Instruction(Opcode.INC),
+                    Instruction(Opcode.HALT),
+                ]
+            )
+
+    def test_dec_overflow(self):
+        with pytest.raises(ArithmeticOverflow):
+            run_program(
+                [
+                    _push_i64(I64_MIN),
+                    Instruction(Opcode.DEC),
+                    Instruction(Opcode.HALT),
+                ]
+            )
+
+    def test_sqr_overflow(self):
+        with pytest.raises(ArithmeticOverflow):
+            run_program(
+                [
+                    _push_i64(1 << 32),  # (2^32)^2 = 2^64, past I64_MAX
+                    Instruction(Opcode.SQR),
+                    Instruction(Opcode.HALT),
+                ]
+            )
+
+    def test_shl_overflow(self):
+        with pytest.raises(ArithmeticOverflow):
+            run_program(
+                [
+                    Instruction(Opcode.PUSH1, (1,)),
+                    Instruction(Opcode.PUSH1, (64,)),  # 1 << 64 > I64_MAX
+                    Instruction(Opcode.SHL),
+                    Instruction(Opcode.HALT),
+                ]
+            )
+
+    def test_shr_never_overflows(self):
+        """SHR is arithmetic right shift — magnitude decreases, never overflows."""
+        ex = run_program(
+            [
+                _push_i64(I64_MIN),
+                Instruction(Opcode.PUSH1, (1,)),
+                Instruction(Opcode.SHR),
+                Instruction(Opcode.HALT),
+            ]
+        )
+        # I64_MIN >> 1 = -(2^62), well within range
+        assert ex.state.peek(0) == I64_MIN >> 1
+
+
+class TestInputBoundaryCheck:
+    """INPUT validates externally-supplied int values at the VM boundary."""
+
+    def test_input_out_of_range_raises(self):
+        with pytest.raises(ArithmeticOverflow):
+            run_program(
+                [
+                    Instruction(Opcode.PUSH1, (0,)),  # slot 0
+                    Instruction(Opcode.INPUT, (5,)),  # into r5
+                    Instruction(Opcode.HALT),
+                ],
+                input_data={0: I64_MAX + 1},
+            )
+
+    def test_input_i64_max_is_accepted(self):
+        ex = run_program(
+            [
+                Instruction(Opcode.PUSH1, (0,)),
+                Instruction(Opcode.INPUT, (5,)),
+                Instruction(Opcode.HALT),
+            ],
+            input_data={0: I64_MAX},
+        )
+        assert ex.state.get_register(5) == I64_MAX
+
+    def test_input_vec_bypasses_int_check(self):
+        """Vec inputs pass through; their int contents are validated on use."""
+        ex = run_program(
+            [
+                Instruction(Opcode.PUSH1, (0,)),
+                Instruction(Opcode.INPUT, (5,)),
+                Instruction(Opcode.HALT),
+            ],
+            input_data={0: Vec.from_list([1, 2, 3])},
+        )
+        assert isinstance(ex.state.get_register(5), Vec)

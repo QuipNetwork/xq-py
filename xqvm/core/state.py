@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .errors import LoopError, RegisterNotFound, StackOverflow, StackUnderflow
+from .errors import ArithmeticOverflow, LoopError, RegisterNotFound, StackOverflow, StackUnderflow
 from .vector import Vec
 from .xqmx import XQMX
 
@@ -16,6 +16,19 @@ Value = int | Vec | XQMX
 
 # Maximum stack size to prevent runaway programs
 MAX_STACK_SIZE = 8192  # 2^13
+
+# Signed 64-bit integer bounds. Stack values are constrained to i64; producing
+# a value outside this range (via arithmetic, shifts, INPUT, etc.) raises
+# ArithmeticOverflow. Programs that stay within i64 on xq-py are guaranteed
+# portable to implementations that use fixed-width 64-bit stacks.
+I64_MIN = -(2**63)
+I64_MAX = (2**63) - 1
+
+
+def check_i64(value: int, context: str = "") -> None:
+    """Raise ArithmeticOverflow if value is outside the signed 64-bit range."""
+    if value < I64_MIN or value > I64_MAX:
+        raise ArithmeticOverflow(value, context)
 
 
 @dataclass
@@ -136,6 +149,7 @@ class MachineState:
         """Push an integer onto the stack."""
         if len(self.stack) >= MAX_STACK_SIZE:
             raise StackOverflow(MAX_STACK_SIZE)
+        check_i64(value, "stack push")
         self.stack.append(value)
 
     def pop(self) -> int:

@@ -18,7 +18,7 @@ from .errors import (
 )
 from .opcodes import Opcode
 from .program import Instruction, Program
-from .state import MachineState
+from .state import MachineState, check_i64
 from .vector import Vec, VecElem
 from .xqmx import (
     XQMX,
@@ -439,6 +439,12 @@ class Executor:
         reg = instr.operands[0]
         slot = self.state.pop()
         value = self.state.get_input(slot)
+        # Validate externally-supplied integers at the boundary so that
+        # ill-formed inputs fail early rather than deferring to the first LOAD.
+        # Vec and XQMX values pass through unchecked; their integer contents
+        # are validated when they reach the stack via GETLINE/GETQUAD/VECGET.
+        if isinstance(value, int) and not isinstance(value, bool):
+            check_i64(value, f"INPUT slot {slot}")
         self.state.set_register(reg, value)
 
     def _runner_OUTPUT(self, instr: Instruction) -> None:

@@ -66,6 +66,18 @@ class DivisionByZero(XQVMError):
         super().__init__("Division by zero")
 
 
+class ArithmeticOverflow(XQVMError):
+    """Raised when a value outside the signed 64-bit range would enter the VM."""
+
+    def __init__(self, value: int, context: str = ""):
+        self.value = value
+        self.context = context
+        msg = f"Arithmetic overflow: {value} is outside signed 64-bit range"
+        if context:
+            msg += f" ({context})"
+        super().__init__(msg)
+
+
 class TargetNotFound(XQVMError):
     """Raised when a jump target does not exist."""
 

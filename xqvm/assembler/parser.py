@@ -25,7 +25,7 @@ class ParseError(Exception):
 
 def _strip_comment(text: str) -> str:
     """Remove inline comment from a line."""
-    idx = text.find("#")
+    idx = text.find(";")
     if idx == -1:
         return text
     return text[:idx]

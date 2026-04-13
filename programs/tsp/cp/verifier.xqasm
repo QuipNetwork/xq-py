@@ -1,4 +1,4 @@
-# === Inputs ===
+; === Inputs ===
 PUSH 0
 INPUT r0
 PUSH 1
@@ -6,11 +6,11 @@ INPUT r1
 PUSH 2
 INPUT r2
 
-# === Validity checks ===
+; === Validity checks ===
 PUSH 1
 STOW r3
 
-# Check row sums = 1
+; Check row sums = 1
 PUSH 0
 LOAD r2
 RANGE
@@ -24,7 +24,7 @@ RANGE
   STOW r3
 NEXT
 
-# Check col sums = 1
+; Check col sums = 1
 PUSH 0
 LOAD r2
 RANGE
@@ -38,11 +38,11 @@ RANGE
   STOW r3
 NEXT
 
-# === Energy ===
+; === Energy ===
 ENERGY r0 r1
 STOW r4
 
-# === Output ===
+; === Output ===
 PUSH 0
 OUTPUT r4
 PUSH 1

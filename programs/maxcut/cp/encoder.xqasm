@@ -1,14 +1,14 @@
-# === Inputs ===
+; === Inputs ===
 PUSH 0
 INPUT r0
 PUSH 1
 INPUT r1
 
-# === Allocations ===
+; === Allocations ===
 LOAD r0
 BQMX r2
 
-# === Objective ===
+; === Objective ===
 VECLEN r1
 PUSH 3
 DIV
@@ -51,7 +51,7 @@ RANGE
   ADDQUAD r2
 NEXT
 
-# === Output ===
+; === Output ===
 PUSH 0
 OUTPUT r2
 HALT

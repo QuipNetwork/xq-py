@@ -80,7 +80,7 @@ def compile_encoder(prob: Problem) -> str:
             body_actions.append(action)
 
     # --- Inputs ---
-    lines.append("# === Inputs ===")
+    lines.append("; === Inputs ===")
     for action in input_actions:
         ref: InputRef = action.data["ref"]
         lines.append(f"PUSH {ref.reg}")
@@ -88,7 +88,7 @@ def compile_encoder(prob: Problem) -> str:
 
     # --- Allocations ---
     lines.append("")
-    lines.append("# === Allocations ===")
+    lines.append("; === Allocations ===")
     if model_action is not None:
         _emit_model_allocation(model_action.data, lines, indent)
 
@@ -97,17 +97,17 @@ def compile_encoder(prob: Problem) -> str:
 
     if obj_actions:
         lines.append("")
-        lines.append("# === Objective ===")
+        lines.append("; === Objective ===")
         _emit_body_actions(obj_actions, lines, 0, targets)
 
     if con_actions:
         lines.append("")
-        lines.append("# === Constraints ===")
+        lines.append("; === Constraints ===")
         _emit_body_actions(con_actions, lines, 0, targets)
 
     # --- Output ---
     lines.append("")
-    lines.append("# === Output ===")
+    lines.append("; === Output ===")
     lines.append("PUSH 0")
     if model_action is not None:
         lines.append(f"OUTPUT r{model_action.data['model_reg']}")
@@ -444,7 +444,7 @@ def compile_verifier(prob: Problem) -> str:
     has_onehot = has_row or has_col
 
     # --- Inputs ---
-    lines.append("# === Inputs ===")
+    lines.append("; === Inputs ===")
     lines.append("PUSH 0")
     lines.append(f"INPUT r{R_MODEL}")
     lines.append("PUSH 1")
@@ -454,34 +454,34 @@ def compile_verifier(prob: Problem) -> str:
 
     # --- Initialize valid flag ---
     lines.append("")
-    lines.append("# === Validity checks ===")
+    lines.append("; === Validity checks ===")
     lines.append("PUSH 1")
     lines.append(f"STOW r{R_VALID}")
 
     if has_row:
         lines.append("")
-        lines.append("# Check row sums = 1")
+        lines.append("; Check row sums = 1")
         _emit_verifier_check_loop(lines, R_N, R_LOOP, "ROWSUM", R_SAMPLE, R_VALID)
 
     if has_col:
         lines.append("")
-        lines.append("# Check col sums = 1")
+        lines.append("; Check col sums = 1")
         _emit_verifier_check_loop(lines, R_N, R_LOOP, "COLSUM", R_SAMPLE, R_VALID)
 
     if not has_onehot:
         lines.append("")
-        lines.append("# Check all variables are binary")
+        lines.append("; Check all variables are binary")
         _emit_verifier_binary_check(lines, R_N, R_LOOP, R_SAMPLE, R_VALID)
 
     # --- Energy ---
     lines.append("")
-    lines.append("# === Energy ===")
+    lines.append("; === Energy ===")
     lines.append(f"ENERGY r{R_MODEL} r{R_SAMPLE}")
     lines.append(f"STOW r{R_ENERGY}")
 
     # --- Output ---
     lines.append("")
-    lines.append("# === Output ===")
+    lines.append("; === Output ===")
     lines.append("PUSH 0")
     lines.append(f"OUTPUT r{R_ENERGY}")
     lines.append("PUSH 1")
@@ -556,7 +556,7 @@ def compile_decoder(prob: Problem) -> str:
     R_LOOP = 10
 
     # --- Inputs ---
-    lines.append("# === Inputs ===")
+    lines.append("; === Inputs ===")
     lines.append("PUSH 0")
     lines.append(f"INPUT r{R_SAMPLE}")
     lines.append("PUSH 1")
@@ -571,12 +571,12 @@ def compile_decoder(prob: Problem) -> str:
 
         if output_ref.type_ == Types.Vec:
             lines.append("")
-            lines.append(f"# === Decode {output_ref.name} ===")
+            lines.append(f"; === Decode {output_ref.name} ===")
             lines.append(f"VECI r{out_reg}")
             _emit_decoder_block(block, lines, 0, R_SAMPLE, R_N, R_LOOP, out_reg)
 
         lines.append("")
-        lines.append("# === Output ===")
+        lines.append("; === Output ===")
         lines.append(f"PUSH {output_ref.slot}")
         lines.append(f"OUTPUT r{out_reg}")
 

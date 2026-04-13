@@ -92,9 +92,9 @@ if __name__ == "__main__":
             ("verifier", programs.verifier),
             ("decoder", programs.decoder),
         ]:
-            print(f"# {'=' * 60}")
-            print(f"# {name}.xqasm")
-            print(f"# {'=' * 60}")
+            print(f"; {'=' * 60}")
+            print(f"; {name}.xqasm")
+            print(f"; {'=' * 60}")
             print(source)
     else:
         compile_and_write()

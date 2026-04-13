@@ -1,10 +1,10 @@
-# === Inputs ===
+; === Inputs ===
 PUSH 0
 INPUT r0
 PUSH 1
 INPUT r1
 
-# === Allocations ===
+; === Allocations ===
 LOAD r0
 SQR
 BQMX r3
@@ -14,7 +14,7 @@ LOAD r0
 LOAD r2
 RESIZE r3
 
-# === Objective ===
+; === Objective ===
 PUSH 0
 LOAD r0
 DEC
@@ -71,7 +71,7 @@ RANGE
   NEXT
 NEXT
 
-# === Constraints ===
+; === Constraints ===
 PUSH 0
 LOAD r0
 RANGE
@@ -89,7 +89,7 @@ RANGE
   ONEHOTC r3
 NEXT
 
-# === Output ===
+; === Output ===
 PUSH 0
 OUTPUT r3
 HALT

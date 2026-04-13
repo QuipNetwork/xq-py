@@ -1,10 +1,10 @@
-# === Inputs ===
+; === Inputs ===
 PUSH 0
 INPUT r0
 PUSH 1
 INPUT r1
 
-# === Decode tour ===
+; === Decode tour ===
 VECI r2
 PUSH 0
 LOAD r1
@@ -16,7 +16,7 @@ RANGE
   VECPUSH r2
 NEXT
 
-# === Output ===
+; === Output ===
 PUSH 0
 OUTPUT r2
 HALT

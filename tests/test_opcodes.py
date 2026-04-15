@@ -10,7 +10,7 @@ class TestOpcodeCount:
 
     def test_total_opcode_count(self):
         """Should have exactly 84 opcodes."""
-        assert len(Opcode) == 84
+        assert len(Opcode) == 89
 
     def test_all_opcodes_have_metadata(self):
         """Every opcode must have valid metadata."""
